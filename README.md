@@ -29,10 +29,6 @@ python app.py
 
 Open <http://127.0.0.1:5000>. New location and weather lookups need an internet connection.
 
-## Deploy on Vercel
-
-Import the Git repository into Vercel and deploy. Vercel detects the Flask app from `app.py` and installs Flask from `requirements.txt`. Static assets are in `public/` for Vercel's CDN. `.vercelignore` excludes any legacy local JSON report, favorite, and cache files from the deployment. Browser history is not shared between visitors or Vercel function instances.
-
 ## Data providers and attribution
 
 Weather and location search use [Open-Meteo](https://open-meteo.com/) and its GeoNames-based geocoding results; the approximate map uses [OpenStreetMap](https://www.openstreetmap.org/copyright). Weather data is provided under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). Review [Open-Meteo's current terms](https://open-meteo.com/en/terms) before commercial use.
