@@ -6,7 +6,6 @@ import statistics
 import threading
 import time
 from datetime import date, datetime, timedelta
-from pathlib import Path
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
@@ -14,8 +13,8 @@ from urllib.request import Request, urlopen
 
 FORECAST_DOCS = "https://open-meteo.com/en/docs"
 HISTORICAL_DOCS = "https://open-meteo.com/en/docs/historical-weather-api"
-CACHE_FILE = Path(__file__).with_name(".weather_cache.json")
 CACHE_LOCK = threading.RLock()
+CACHE = {}
 
 
 class WeatherDataError(Exception):
@@ -116,12 +115,17 @@ class WeatherEngine:
         return [reports[selected.isoformat()] for selected in dates]
 
     @classmethod
-    def search_locations(cls, query):
+    def search_locations(cls, query, language="en"):
         query = query.strip()
         if len(query) < 2:
             return []
         url = "https://geocoding-api.open-meteo.com/v1/search?" + urlencode(
-            {"name": query[:100], "count": 10, "language": "en", "format": "json"}
+            {
+                "name": query[:100],
+                "count": 10,
+                "language": "hu" if language == "hu" else "en",
+                "format": "json",
+            }
         )
         data = cls._get_json(url)
         results = []
@@ -509,36 +513,17 @@ class WeatherEngine:
     @staticmethod
     def _read_cached_response(cache_key):
         with CACHE_LOCK:
-            try:
-                with CACHE_FILE.open("r", encoding="utf-8") as file:
-                    cache = json.load(file)
-                if not isinstance(cache, dict):
-                    return None
-                return cache.get(cache_key)
-            except (OSError, json.JSONDecodeError):
-                return None
+            return CACHE.get(cache_key)
 
     @classmethod
     def _write_cached_response(cls, cache_key, data, saved_at):
         with CACHE_LOCK:
-            try:
-                with CACHE_FILE.open("r", encoding="utf-8") as file:
-                    cache = json.load(file)
-                if not isinstance(cache, dict):
-                    cache = {}
-            except (OSError, json.JSONDecodeError):
-                cache = {}
-            cache[cache_key] = {"saved_at": saved_at, "data": data}
-            temporary_file = CACHE_FILE.with_suffix(".json.tmp")
-            try:
-                with temporary_file.open("w", encoding="utf-8") as file:
-                    json.dump(cache, file, ensure_ascii=False)
-                temporary_file.replace(CACHE_FILE)
-            except OSError:
-                try:
-                    temporary_file.unlink(missing_ok=True)
-                except OSError:
-                    pass
+            CACHE[cache_key] = {"saved_at": saved_at, "data": data}
+            # Keep worker memory bounded. This cache contains public provider
+            # responses only; it is never report or user-history storage.
+            while len(CACHE) > 128:
+                oldest_key = min(CACHE, key=lambda key: CACHE[key].get("saved_at", 0))
+                CACHE.pop(oldest_key, None)
 
     @staticmethod
     def _cache_ttl(url):

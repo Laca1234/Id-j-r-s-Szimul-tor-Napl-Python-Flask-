@@ -8,314 +8,308 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="/style.css">
 </head>
 <body>
     <div class="page-shell">
         <header class="topbar">
-            <a class="brand" href="{{ url_for('index') }}" aria-label="Weather Journal home">
+            <a class="brand" href="/" aria-label="Weather Journal home">
                 <span class="brand-mark" aria-hidden="true">W</span>
                 <span>Weather Journal</span>
             </a>
-            <span class="topbar-note"><span class="live-dot"></span> Data-backed reports</span>
+            <div class="topbar-actions">
+                <span class="topbar-note"><span class="live-dot"></span><span data-i18n="dataBacked">Data-backed reports</span></span>
+                <div class="language-toggle" role="group" aria-label="Language / Nyelv">
+                    <button type="button" class="language-option is-active" data-language="en" aria-pressed="true">EN</button>
+                    <button type="button" class="language-option" data-language="hu" aria-pressed="false">HU</button>
+                </div>
+            </div>
         </header>
 
         <main>
             <section class="intro">
-                <p class="eyebrow">A clearer view of the weather</p>
-                <h1>Look up a day.<br><span>Know what to expect.</span></h1>
-                <p class="intro-copy">Choose a date and an area to get historical weather, a live forecast, or a longer-range climate outlook.</p>
+                <p class="eyebrow" data-i18n="introEyebrow">A clearer view of the weather</p>
+                <h1><span data-i18n="headlineFirst">Look up a day.</span><br><span data-i18n="headlineSecond">Know what to expect.</span></h1>
+                <p class="intro-copy" data-i18n="introCopy">Choose a date and an area to get historical weather, a live forecast, or a longer-range climate outlook.</p>
             </section>
 
-            {% for category, message in messages %}
-            <div class="notice notice-{{ category }}" role="status">{{ message }}</div>
-            {% endfor %}
+            <div id="app-status" class="notice" role="status" aria-live="polite" hidden></div>
 
             <section class="lookup-card" aria-labelledby="lookup-title">
                 <div class="section-heading">
                     <div>
-                        <p class="eyebrow">Weather lookup</p>
-                        <h2 id="lookup-title">Build a report</h2>
+                        <p class="eyebrow" data-i18n="lookupEyebrow">Weather lookup</p>
+                        <h2 id="lookup-title" data-i18n="buildReport">Build a report</h2>
                     </div>
-                    <span class="step-tag">01 <span>·</span> Choose date &amp; area</span>
+                    <span class="step-tag"><span data-i18n="stepOne">01</span> <span>·</span> <span data-i18n="chooseDateArea">Choose date &amp; area</span></span>
                 </div>
 
-                <form action="{{ url_for('generate') }}" method="post" id="weather-form">
-                <div class="form-grid">
+                <form id="weather-form">
+                    <div class="form-grid">
                         <div class="field date-field">
-                            <label for="date">Date</label>
+                            <label for="date" data-i18n="dateLabel">Date</label>
                             <div class="input-wrap date-wrap">
                                 <span class="input-icon" aria-hidden="true">▦</span>
                                 <input id="date" name="date" type="date" value="{{ today }}" min="1940-01-01" required>
                             </div>
-                            <p class="field-help">Any date from 1940 onward, past or future.</p>
+                            <p class="field-help" data-i18n="dateHelp">Any date from 1940 onward, past or future.</p>
                         </div>
 
-                    <div class="field end-date-field">
-                        <label for="end-date">Through <span class="optional-label">optional</span></label>
-                        <div class="input-wrap date-wrap">
-                            <span class="input-icon" aria-hidden="true">↔</span>
-                            <input id="end-date" name="end_date" type="date" min="1940-01-01" aria-describedby="range-help">
+                        <div class="field end-date-field">
+                            <label for="end-date"><span data-i18n="through">Through</span> <span class="optional-label" data-i18n="optional">optional</span></label>
+                            <div class="input-wrap date-wrap">
+                                <span class="input-icon" aria-hidden="true">↔</span>
+                                <input id="end-date" name="end_date" type="date" min="1940-01-01" aria-describedby="range-help">
+                            </div>
+                            <p id="range-help" class="field-help" data-i18n="rangeHelp">Add up to 31 days for a daily timeline.</p>
                         </div>
-                        <p id="range-help" class="field-help">Add up to 31 days for a daily timeline.</p>
-                    </div>
 
                         <div class="field location-field">
-                            <label for="location-query">Area</label>
+                            <label for="location-query" data-i18n="area">Area</label>
                             <div class="input-wrap">
                                 <span class="input-icon" aria-hidden="true">⌖</span>
-                                <input id="location-query" type="search" autocomplete="off" placeholder="Search a city or region" aria-describedby="location-help location-status">
+                                <input id="location-query" type="search" autocomplete="off" placeholder="Search a city or region" data-i18n-placeholder="locationPlaceholder" aria-describedby="location-help location-status">
                             </div>
-                            <p id="location-help" class="field-help">Pick a nearby city or region; no street address is used.</p>
+                            <p id="location-help" class="field-help" data-i18n="locationHelp">Pick a nearby city or region; no street address is used.</p>
                             <div id="location-status" class="location-status" aria-live="polite"></div>
                             <div id="location-results" class="location-results" role="listbox" aria-label="Matching areas"></div>
                             <div id="selected-location" class="selected-location" hidden>
                                 <span class="selected-check" aria-hidden="true">✓</span>
                                 <span id="selected-label"></span>
-                                <button type="button" id="change-location" class="change-location">Change</button>
+                                <button type="button" id="change-location" class="change-location" data-i18n="change">Change</button>
                             </div>
                             <div id="area-map-wrap" class="area-map-wrap" hidden>
                                 <iframe id="area-map" title="Approximate selected area map" loading="lazy" referrerpolicy="no-referrer"></iframe>
-                                <a id="area-map-link" href="#" target="_blank" rel="noopener noreferrer">Open map ↗</a>
+                                <a id="area-map-link" href="#" target="_blank" rel="noopener noreferrer" data-i18n="openMap">Open map ↗</a>
                             </div>
-                            <input type="hidden" name="location_name" id="location-name">
-                            <input type="hidden" name="location_region" id="location-region">
-                            <input type="hidden" name="location_country" id="location-country">
-                            <input type="hidden" name="latitude" id="latitude">
-                            <input type="hidden" name="longitude" id="longitude">
                         </div>
                     </div>
 
-                <div class="saved-area-tools">
-                    <div class="saved-area-field">
-                        <label for="saved-area-picker">Saved areas</label>
-                        <div class="saved-area-controls">
-                            <select id="saved-area-picker">
-                                <option value="">Choose a saved area</option>
-                                {% for area in favorites %}
-                                <option value="{{ area.id }}" data-location='{{ area|tojson|forceescape }}'>{{ area.name }}{% if area.region %}, {{ area.region }}{% endif %}{% if area.country %}, {{ area.country }}{% endif %}</option>
-                                {% endfor %}
-                            </select>
-                            <button id="remove-area-button" type="button" class="quiet-button" disabled>Remove</button>
+                    <div class="saved-area-tools">
+                        <div class="saved-area-field">
+                            <label for="saved-area-picker" data-i18n="savedAreas">Saved areas</label>
+                            <div class="saved-area-controls">
+                                <select id="saved-area-picker"><option value="" data-i18n="chooseSavedArea">Choose a saved area</option></select>
+                                <button id="remove-area-button" type="button" class="quiet-button" disabled data-i18n="remove">Remove</button>
+                            </div>
                         </div>
+                        <div class="saved-area-field compare-picker-field">
+                            <label for="compare-location"><span data-i18n="compareWith">Compare with</span> <span class="optional-label" data-i18n="singleDay">single day</span></label>
+                            <select id="compare-location"><option value="" data-i18n="noComparison">No comparison</option></select>
+                        </div>
+                        <button id="save-area-button" type="button" class="quiet-button save-area-button" disabled data-i18n="saveSelectedArea">＋ Save selected area</button>
+                        <span id="favorite-status" class="favorite-status" aria-live="polite"></span>
                     </div>
-                    <div class="saved-area-field compare-picker-field">
-                        <label for="compare-location">Compare with <span class="optional-label">single day</span></label>
-                        <select id="compare-location" name="compare_location_id">
-                            <option value="">No comparison</option>
-                            {% for area in favorites %}
-                            <option value="{{ area.id }}">{{ area.name }}{% if area.region %}, {{ area.region }}{% endif %}{% if area.country %}, {{ area.country }}{% endif %}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                    <button id="save-area-button" type="button" class="quiet-button save-area-button" disabled>＋ Save selected area</button>
-                    <span id="favorite-status" class="favorite-status" aria-live="polite"></span>
-                </div>
 
                     <div class="form-footer">
-                        <p><span class="lock-icon" aria-hidden="true">◌</span> Approximate area data. Your exact address is never requested.</p>
-                        <button type="submit" class="primary-button">
-                            <span>Get weather report</span>
+                        <p><span class="lock-icon" aria-hidden="true">◌</span><span data-i18n="approximatePrivacy">Approximate area data. Your exact address is never requested.</span></p>
+                        <button id="submit-button" type="submit" class="primary-button">
+                            <span data-i18n="getReport">Get weather report</span>
                             <span class="button-arrow" aria-hidden="true">↗</span>
                         </button>
                     </div>
                 </form>
             </section>
 
+            <aside class="local-data-note">
+                <span aria-hidden="true">⌂</span>
+                <p><strong data-i18n="localDataTitle">Your journal stays on this device</strong><span data-i18n="localDataCopy">Reports and saved areas are stored in this browser profile, not in a shared server history. Export a backup to move them to another browser.</span></p>
+            </aside>
+
             <section class="method-strip" aria-label="How reports are built">
                 <article class="method-item">
                     <span class="method-icon past-icon" aria-hidden="true">↶</span>
-                    <div><h3>Past dates</h3><p>Historical weather reanalysis</p></div>
+                    <div><h3 data-i18n="pastDates">Past dates</h3><p data-i18n="historicalData">Historical weather reanalysis</p></div>
                 </article>
                 <article class="method-item">
                     <span class="method-icon forecast-icon" aria-hidden="true">☀</span>
-                    <div><h3>Up to 15 days ahead</h3><p>Current multi-model forecast</p></div>
+                    <div><h3 data-i18n="forecastHorizon">Up to 15 days ahead</h3><p data-i18n="currentForecast">Current multi-model forecast</p></div>
                 </article>
                 <article class="method-item">
                     <span class="method-icon outlook-icon" aria-hidden="true">▤</span>
-                    <div><h3>Further ahead</h3><p>10-year climate outlook</p></div>
+                    <div><h3 data-i18n="furtherAhead">Further ahead</h3><p data-i18n="climateOutlook">10-year climate outlook</p></div>
                 </article>
             </section>
 
-            {% if latest %}
-            <section class="report-card" aria-labelledby="report-title">
-                <div class="report-topline">
-                    <div>
-                        <p class="eyebrow">Your latest lookup <span class="report-date">· {{ latest.get('date', latest.get('timestamp', '')) }}</span></p>
-                        <h2 id="report-title">{{ latest.get('location', 'Selected area') }}</h2>
-                        <p class="report-place">{{ latest.get('region', '') }}{% if latest.get('region') and latest.get('country') %}, {% endif %}{{ latest.get('country', '') }}</p>
-                    </div>
-                    {% set scenario_type = latest.get('scenario_type') or 'legacy' %}
-                    <div class="badge-stack">
-                        <span class="report-badge badge-{{ scenario_type }}">
-                            {% if scenario_type == 'forecast' %}Forecast{% elif scenario_type == 'climate_outlook' %}Climate outlook{% elif scenario_type == 'historical' %}Historical{% elif scenario_type == 'legacy' %}Legacy sample{% else %}{{ scenario_type }}{% endif %}
-                        </span>
-                        {% if latest.get('confidence_label') %}
-                        <span class="confidence-badge confidence-{{ latest.get('confidence_label')|lower }}">{{ latest.get('confidence_label') }} confidence · {{ latest.get('lead_days') }}d lead</span>
-                        {% endif %}
-                    </div>
-                </div>
-
-                <div class="report-summary">
-                    <div class="condition-block">
-                        <span class="condition-spark" aria-hidden="true">✳</span>
-                        <div>
-                            <h3>{{ latest.get('condition', 'Conditions unavailable') }}</h3>
-                            <p>{{ latest.get('season', '') }} conditions around {{ latest.get('date', latest.get('timestamp', '')) }}</p>
-                        </div>
-                    </div>
-                    <div class="temperature-block">
-                        <span class="temperature-value">{{ latest.get('temperature', '—') }}<sup>°C</sup></span>
-                        {% if latest.get('temperature_min') is not none and latest.get('temperature_max') is not none %}
-                        <span class="temperature-range">{{ latest.get('temperature_min')|round(0)|int }}° <span>to</span> {{ latest.get('temperature_max')|round(0)|int }}°</span>
-                        {% endif %}
-                    </div>
-                </div>
-
-                {% if latest.get('normal_temperature') is not none %}
-                <div class="normal-comparison">
-                    <div class="normal-main">
-                        <span class="normal-kicker">Compared with local climate normals</span>
-                        <strong>{% if latest.get('temperature_vs_normal') > 0 %}+{% endif %}{{ latest.get('temperature_vs_normal') }}°C <span>vs typical</span></strong>
-                    </div>
-                    <div class="normal-range">
-                        <span>Typical daily mean</span>
-                        <strong>{{ latest.get('normal_range_low') }}°–{{ latest.get('normal_range_high') }}°C</strong>
-                    </div>
-                    <div class="normal-rain">
-                        <span>Typical rain likelihood</span>
-                        <strong>{% if latest.get('normal_precipitation_probability') is not none %}{{ latest.get('normal_precipitation_probability') }}%{% else %}—{% endif %}</strong>
-                    </div>
-                </div>
-                <p class="confidence-explainer">The confidence label reflects forecast lead time. The comparison uses {{ latest.get('normal_sample_count') }} historical days around this time of year.</p>
-                {% endif %}
-
-                {% if latest.get('scenario_type') == 'climate_outlook' and latest.get('temperature_range_low') is not none %}
-                <div class="range-note">Typical daily mean range: <strong>{{ latest.get('temperature_range_low') }}° to {{ latest.get('temperature_range_high') }}°C</strong></div>
-                {% endif %}
-
-                <div class="metric-grid">
-                    <div class="metric">
-                        <span class="metric-icon rain-icon" aria-hidden="true">◒</span>
-                        <div><span class="metric-label">Chance of precipitation</span>
-                            <strong>{% if latest.get('precipitation_probability') is not none %}{{ latest.get('precipitation_probability')|round|int }}%{% else %}—{% endif %}</strong>
-                        </div>
-                    </div>
-                    <div class="metric">
-                        <span class="metric-icon drop-icon" aria-hidden="true">↓</span>
-                        <div><span class="metric-label">Precipitation</span>
-                            <strong>{% if latest.get('precipitation_sum') is not none %}{{ latest.get('precipitation_sum')|round(1) }} mm{% else %}—{% endif %}</strong>
-                        </div>
-                    </div>
-                    <div class="metric">
-                        <span class="metric-icon wind-icon" aria-hidden="true">↗</span>
-                        <div><span class="metric-label">Peak wind</span>
-                            <strong>{% if latest.get('wind_speed') is not none %}{{ latest.get('wind_speed')|round(0)|int }} km/h{% else %}—{% endif %}</strong>
-                        </div>
-                    </div>
-                    <div class="metric">
-                        <span class="metric-icon feels-icon" aria-hidden="true">≈</span>
-                        <div><span class="metric-label">Feels like</span>
-                            <strong>{% if latest.get('feels_like_min') is not none and latest.get('feels_like_max') is not none %}{{ latest.get('feels_like_min')|round(0)|int }}°–{{ latest.get('feels_like_max')|round(0)|int }}°C{% else %}—{% endif %}</strong>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="source-note">
-                    <div class="source-copy">
-                        <span class="source-dot" aria-hidden="true"></span>
-                        <p><strong>{{ latest.get('data_basis') or 'Legacy simulator sample' }}</strong><span>{{ latest.get('data_note') or 'This older report was randomly generated by the original simulator; it is not a weather observation.' }}</span></p>
-                    </div>
-                    {% if latest.get('sample_count') %}<span class="sample-count">{{ latest.get('sample_count') }} sample days</span>{% endif %}
-                    {% if latest.get('source_url') %}<a href="{{ latest.get('source_url') }}" target="_blank" rel="noopener noreferrer">Data source ↗</a>{% endif %}
-                </div>
-            </section>
-            {% endif %}
-
-            {% if comparison_records|length == 2 %}
-            <section class="comparison-section" aria-labelledby="comparison-title">
-                <div class="section-heading">
-                    <div><p class="eyebrow">Same date, two areas</p><h2 id="comparison-title">Area comparison</h2></div>
-                    <span class="step-tag">{{ comparison_records[0].get('date') }}</span>
-                </div>
-                <div class="comparison-grid">
-                    {% for place in comparison_records %}
-                    <article class="comparison-place">
-                        <div class="comparison-place-heading"><div><h3>{{ place.get('location', 'Area') }}</h3><p>{{ place.get('region', '') }}{% if place.get('region') and place.get('country') %}, {% endif %}{{ place.get('country', '') }}</p></div><span>{{ place.get('condition', '—') }}</span></div>
-                        <div class="comparison-temperature">{{ place.get('temperature', '—') }}<sup>°C</sup></div>
-                        <div class="comparison-metrics"><span>High / low <strong>{% if place.get('temperature_min') is not none and place.get('temperature_max') is not none %}{{ place.get('temperature_min') }}° / {{ place.get('temperature_max') }}°{% else %}—{% endif %}</strong></span><span>Precipitation <strong>{% if place.get('precipitation_probability') is not none %}{{ place.get('precipitation_probability') }}% chance{% elif place.get('precipitation_sum') is not none %}{{ place.get('precipitation_sum')|round(1) }} mm{% else %}—{% endif %}</strong></span><span>Peak wind <strong>{% if place.get('wind_speed') is not none %}{{ place.get('wind_speed')|round|int }} km/h{% else %}—{% endif %}</strong></span></div>
-                    </article>
-                    {% endfor %}
-                </div>
-            </section>
-            {% endif %}
-
-            {% if timeline_records %}
-            <section class="timeline-section" aria-labelledby="timeline-title">
-                <div class="section-heading timeline-heading">
-                    <div><p class="eyebrow">Daily overview</p><h2 id="timeline-title">{{ timeline_records|length }}-day weather timeline</h2></div>
-                    <span class="step-tag">{{ timeline_records[0].get('date') }} → {{ timeline_records[-1].get('date') }}</span>
-                </div>
-                {% if timeline_max_temperature is not none %}<p class="timeline-range">Temperature range across this period: <strong>{{ timeline_min_temperature }}° to {{ timeline_max_temperature }}°C</strong></p>{% endif %}
-                <div class="timeline-grid">
-                    {% for day in timeline_records %}
-                    <article class="timeline-day">
-                        <div class="timeline-date">{{ day.get('date') }}</div>
-                        <div class="timeline-condition">{{ day.get('condition', '—') }}</div>
-                        <div class="timeline-basis">{% if day.get('scenario_type') == 'forecast' %}{{ day.get('confidence_label') }} confidence{% elif day.get('scenario_type') == 'climate_outlook' %}Climate outlook{% elif day.get('scenario_type') == 'historical' %}Historical data{% else %}{{ day.get('data_basis', 'Report') }}{% endif %}</div>
-                        <div class="timeline-temperature">{{ day.get('temperature', '—') }}<sup>°</sup></div>
-                        <div class="timeline-track" aria-label="Temperature range"><span style="left: {{ day.get('range_left', 0) }}%; width: {{ day.get('range_width', 5) }}%"></span></div>
-                        <div class="timeline-extremes"><span>{% if day.get('temperature_min') is not none %}{{ day.get('temperature_min') }}°{% else %}—{% endif %}</span><span>{% if day.get('temperature_max') is not none %}{{ day.get('temperature_max') }}°{% else %}—{% endif %}</span></div>
-                        <div class="timeline-rain">Precipitation {% if day.get('precipitation_probability') is not none %}<strong>{{ day.get('precipitation_probability') }}% chance</strong>{% elif day.get('precipitation_sum') is not none %}<strong>{{ day.get('precipitation_sum')|round(1) }} mm</strong>{% else %}<strong>—</strong>{% endif %}</div>
-                    </article>
-                    {% endfor %}
-                </div>
-            </section>
-            {% endif %}
+            <section id="latest-section" class="report-card" aria-labelledby="report-title" hidden></section>
+            <section id="comparison-section" class="comparison-section" aria-labelledby="comparison-title" hidden></section>
+            <section id="timeline-section" class="timeline-section" aria-labelledby="timeline-title" hidden></section>
 
             <section class="history-section">
                 <div class="section-heading history-heading">
-                    <div><p class="eyebrow">Your saved lookups</p><h2>Report history</h2></div>
+                    <div><p class="eyebrow" data-i18n="savedLookups">Your saved lookups</p><h2 data-i18n="reportHistory">Report history</h2></div>
                     <div class="history-stats">
-                        <div><span>Reports</span><strong>{{ records|length }}</strong></div>
-                        <div><span>Average temperature</span><strong>{% if average_temperature is not none %}{{ average_temperature }}°C{% else %}—{% endif %}</strong></div>
+                        <div><span data-i18n="reports">Reports</span><strong id="report-count">0</strong></div>
+                        <div><span data-i18n="averageTemperature">Average temperature</span><strong id="average-temperature">—</strong></div>
                     </div>
                 </div>
-                {% if records %}
-                <div class="table-wrap">
-                    <table>
-                        <thead><tr><th>Date</th><th>Area</th><th>Type</th><th>Conditions</th><th>Temperature</th><th>Rain chance</th></tr></thead>
-                        <tbody>
-                        {% for record in records|reverse %}
-                        <tr>
-                            <td>{{ record.get('date', record.get('timestamp', '—')) }}</td>
-                            <td>{{ record.get('location', '—') }}</td>
-                            <td><span class="table-type">{{ record.get('data_basis') or ('Legacy simulator sample' if not record.get('scenario_type') else 'Report') }}</span></td>
-                            <td>{{ record.get('condition', '—') }}</td>
-                            <td>{% if record.get('temperature') is not none %}{{ record.get('temperature') }}°C{% else %}—{% endif %}</td>
-                            <td>{% if record.get('precipitation_probability') is not none %}{{ record.get('precipitation_probability')|round|int }}%{% else %}—{% endif %}</td>
-                        </tr>
-                        {% endfor %}
-                        </tbody>
-                    </table>
+                <div class="history-tools">
+                    <button id="export-button" type="button" class="quiet-button" data-i18n="exportData">Export data</button>
+                    <label class="quiet-button import-button"><span data-i18n="importData">Import backup</span><input id="import-file" type="file" accept="application/json,.json"></label>
+                    <button id="clear-data-button" type="button" class="quiet-button danger-button" data-i18n="clearData">Clear this browser’s data</button>
                 </div>
-                {% else %}
-                <div class="empty-state"><span aria-hidden="true">☼</span><p>No reports yet. Choose a date and area above to create your first one.</p></div>
-                {% endif %}
+                <p id="storage-status" class="storage-status" aria-live="polite"></p>
+                <div id="history-content"></div>
             </section>
         </main>
 
         <footer class="footer">
-            <p>Weather data by <a href="https://open-meteo.com/" target="_blank" rel="noopener noreferrer">Open-Meteo</a> · Locations by GeoNames · Maps by <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a></p>
-            <p>Weather data is provided under <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a>.</p>
+            <p><span data-i18n="weatherDataBy">Weather data by</span> <a href="https://open-meteo.com/" target="_blank" rel="noopener noreferrer">Open-Meteo</a> · <span data-i18n="locationsBy">Locations by GeoNames</span> · <span data-i18n="mapsBy">Maps by</span> <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a></p>
+            <p><span data-i18n="dataLicense">Weather data is provided under</span> <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a>.</p>
         </footer>
     </div>
 
     <script>
         (() => {
+            const translations = {
+                en: {
+                    dataBacked: "Data-backed reports", introEyebrow: "A clearer view of the weather", headlineFirst: "Look up a day.", headlineSecond: "Know what to expect.", introCopy: "Choose a date and an area to get historical weather, a live forecast, or a longer-range climate outlook.",
+                    lookupEyebrow: "Weather lookup", buildReport: "Build a report", stepOne: "01", chooseDateArea: "Choose date & area", dateLabel: "Date", dateHelp: "Any date from 1940 onward, past or future.", through: "Through", optional: "optional", rangeHelp: "Add up to 31 days for a daily timeline.", area: "Area", locationPlaceholder: "Search a city or region", locationHelp: "Pick a nearby city or region; no street address is used.", change: "Change", openMap: "Open map ↗", savedAreas: "Saved areas", chooseSavedArea: "Choose a saved area", remove: "Remove", compareWith: "Compare with", singleDay: "single day", noComparison: "No comparison", saveSelectedArea: "＋ Save selected area", approximatePrivacy: "Approximate area data. Your exact address is never requested.", getReport: "Get weather report",
+                    localDataTitle: "Your journal stays on this device", localDataCopy: "Reports and saved areas are stored in this browser profile, not in a shared server history. Export a backup to move them to another browser.", pastDates: "Past dates", historicalData: "Historical weather reanalysis", forecastHorizon: "Up to 15 days ahead", currentForecast: "Current multi-model forecast", furtherAhead: "Further ahead", climateOutlook: "10-year climate outlook", latestLookup: "Your latest lookup", forecast: "Forecast", historical: "Historical", climateType: "Climate outlook", legacy: "Legacy sample", higher: "Higher", moderate: "Moderate", lower: "Lower", confidence: "confidence", lead: "d lead", seasonConditions: "conditions around", normalComparison: "Compared with local climate normals", vsTypical: "vs typical", typicalMean: "Typical daily mean", typicalRain: "Typical rain likelihood", normalExplainer: "The confidence label reflects forecast lead time. The comparison uses {count} historical days around this time of year.", typicalRange: "Typical daily mean range:", chancePrecipitation: "Chance of precipitation", precipitation: "Precipitation", peakWind: "Peak wind", feelsLike: "Feels like", dataSource: "Data source ↗", sampleDays: "sample days", sameDate: "Same date, two areas", areaComparison: "Area comparison", dailyOverview: "Daily overview", dayTimeline: "-day weather timeline", temperaturePeriod: "Temperature range across this period:", historicalBasis: "Historical data", climateBasis: "Climate outlook", precipitationShort: "Precipitation", chance: "chance", highLow: "High / low", yourLookups: "Your saved lookups", reportHistory: "Report history", reports: "Reports", averageTemperature: "Average temperature", exportData: "Export data", importData: "Import backup", clearData: "Clear this browser’s data", tableDate: "Date", tableArea: "Area", tableType: "Type", tableConditions: "Conditions", tableTemperature: "Temperature", rainChance: "Rain chance", emptyHistory: "No reports yet. Choose a date and area above to create your first one.", weatherDataBy: "Weather data by", locationsBy: "Locations by GeoNames", mapsBy: "Maps by", dataLicense: "Weather data is provided under", localSaved: "Saved only in this browser profile.", reportSaved: "Report saved to this browser.", rangeSaved: "{count}-day timeline saved to this browser.", compareSaved: "Report and comparison saved to this browser.", areaSaved: "Area saved in this browser.", areaRemoved: "Saved area removed.", typeTwoLetters: "Type at least two letters to search.", searching: "Searching areas…", selectMatch: "Select a city or area from the list.", noMatch: "No matching locations found.", selectionNote: "Area selected. The marker is a representative point, not an address.", chooseAreaFirst: "Search for and select a city or region before continuing.", invalidRange: "The end date must be the same day or after the start date.", chooseRangeOrCompare: "Choose either a date range or a single-day area comparison.", savedAreaError: "Could not load that saved area.", confirmClear: "Delete this browser’s reports and saved areas? This cannot be undone.", cleared: "This browser’s journal data has been cleared.", importSuccess: "Backup imported into this browser.", invalidBackup: "That file is not a valid Weather Journal backup.", storageFailed: "Browser storage is unavailable. Try another browser profile or enable site storage.", requestFailed: "Weather lookup failed.", loading: "Loading weather data…", staleCurrent: "Could not reach the weather service.", savedRows: "Open", dataUnavailable: "Conditions unavailable", historicalNote: "Reconstructed gridded weather data; not a station-verified observation.", recentNote: "Recent daily data from the forecast service's past-days endpoint; modelled and subject to revision.", modelForecast: "Weather model forecast", historicalReanalysis: "Historical weather reanalysis", recentWeather: "Recent weather data", outlookData: "10-year climate outlook based on historical samples; not a day-specific forecast.", sourceUnavailable: "Source details unavailable"
+                },
+                hu: {
+                    dataBacked: "Adatokkal alátámasztott jelentések", introEyebrow: "Átláthatóbb időjárási kép", headlineFirst: "Nézd meg a kiválasztott napot.", headlineSecond: "Tudd, mire számíthatsz.", introCopy: "Válassz dátumot és területet a múltbeli időjáráshoz, az aktuális előrejelzéshez vagy a hosszabb távú éghajlati kilátáshoz.",
+                    lookupEyebrow: "Időjárás-lekérdezés", buildReport: "Jelentés készítése", stepOne: "01", chooseDateArea: "Dátum és terület kiválasztása", dateLabel: "Dátum", dateHelp: "1940-től bármely múltbeli vagy jövőbeli dátum.", through: "Eddig", optional: "nem kötelező", rangeHelp: "Legfeljebb 31 napos napi idővonalat adhatsz meg.", area: "Terület", locationPlaceholder: "Város vagy régió keresése", locationHelp: "Válassz egy közeli várost vagy régiót; pontos címet nem használunk.", change: "Módosítás", openMap: "Térkép megnyitása ↗", savedAreas: "Mentett területek", chooseSavedArea: "Válassz mentett területet", remove: "Eltávolítás", compareWith: "Összehasonlítás ezzel", singleDay: "egy nap", noComparison: "Nincs összehasonlítás", saveSelectedArea: "＋ Terület mentése", approximatePrivacy: "Hozzávetőleges területi adatok. Pontos címet nem kérünk.", getReport: "Időjárási jelentés kérése",
+                    localDataTitle: "A naplód ezen az eszközön marad", localDataCopy: "A jelentéseket és mentett területeket ez a böngészőprofil tárolja, nem egy közös szerverelőzmény. Exportálj biztonsági mentést, ha másik böngészőbe vinnéd át.", pastDates: "Múltbeli dátumok", historicalData: "Történeti időjárási újraelemzés", forecastHorizon: "Akár 15 nappal előre", currentForecast: "Aktuális, több modellt használó előrejelzés", furtherAhead: "Ennél távolabb", climateOutlook: "10 éves éghajlati kilátás", latestLookup: "Legutóbbi lekérdezés", forecast: "Előrejelzés", historical: "Múltbeli adat", climateType: "Éghajlati kilátás", legacy: "Régi mintaadat", higher: "Magasabb", moderate: "Közepes", lower: "Alacsonyabb", confidence: "bizonyosság", lead: "napos előrejelzés", seasonConditions: "jellemző időjárás ezen a napon:", normalComparison: "Összevetés a helyi éghajlati átlagokkal", vsTypical: "az átlaghoz képest", typicalMean: "Szokásos napi középhőmérséklet", typicalRain: "Szokásos csapadékvalószínűség", normalExplainer: "A bizonyossági jelölés az előrejelzési időtávot mutatja. Az összehasonlítás {count} korábbi, évszakhoz közeli napot használ.", typicalRange: "Jellemző napi középhőmérséklet-tartomány:", chancePrecipitation: "Csapadék valószínűsége", precipitation: "Csapadék", peakWind: "Maximális szél", feelsLike: "Hőérzet", dataSource: "Adatforrás ↗", sampleDays: "mintanap", sameDate: "Azonos nap, két terület", areaComparison: "Területek összehasonlítása", dailyOverview: "Napi áttekintés", dayTimeline: " napos időjárási idővonal", temperaturePeriod: "Hőmérsékleti tartomány ebben az időszakban:", historicalBasis: "Múltbeli adat", climateBasis: "Éghajlati kilátás", precipitationShort: "Csapadék", chance: "esély", highLow: "Maximum / minimum", yourLookups: "Mentett lekérdezések", reportHistory: "Jelentéselőzmények", reports: "Jelentések", averageTemperature: "Átlaghőmérséklet", exportData: "Adatok exportálása", importData: "Biztonsági mentés importálása", clearData: "Böngészőadatok törlése", tableDate: "Dátum", tableArea: "Terület", tableType: "Típus", tableConditions: "Időjárás", tableTemperature: "Hőmérséklet", rainChance: "Csapadék esélye", emptyHistory: "Még nincs jelentés. Válassz dátumot és területet a fenti első jelentés elkészítéséhez.", weatherDataBy: "Időjárási adatok:", locationsBy: "Helyadatok: GeoNames", mapsBy: "Térképek:", dataLicense: "Az időjárási adatok licence:", localSaved: "Csak ebben a böngészőprofilban mentve.", reportSaved: "A jelentés mentve ebben a böngészőben.", rangeSaved: "A(z) {count} napos idővonal mentve ebben a böngészőben.", compareSaved: "A jelentés és az összehasonlítás mentve ebben a böngészőben.", areaSaved: "A terület mentve ebben a böngészőben.", areaRemoved: "A mentett terület eltávolítva.", typeTwoLetters: "Írj be legalább két betűt a kereséshez.", searching: "Területek keresése…", selectMatch: "Válassz várost vagy területet a listából.", noMatch: "Nincs találat.", selectionNote: "Terület kiválasztva. A jelölő egy hozzávetőleges pontot, nem címet mutat.", chooseAreaFirst: "A folytatáshoz keress meg és válassz ki egy várost vagy régiót.", invalidRange: "A záródátum nem lehet korábbi a kezdődátumnál.", chooseRangeOrCompare: "Válassz dátumtartományt vagy egynapos terület-összehasonlítást.", savedAreaError: "A mentett terület nem tölthető be.", confirmClear: "Törlöd a böngészőben mentett jelentéseket és területeket? Ez nem vonható vissza.", cleared: "A böngészőben tárolt naplóadatok törölve.", importSuccess: "A biztonsági mentés importálva ebbe a böngészőbe.", invalidBackup: "Ez nem érvényes Weather Journal biztonsági mentés.", storageFailed: "A böngésző tárhelye nem érhető el. Próbálj másik profilt vagy engedélyezd a webhelyadatokat.", requestFailed: "Az időjárás-lekérdezés nem sikerült.", loading: "Időjárási adatok betöltése…", staleCurrent: "Az időjárási szolgáltatás nem érhető el.", savedRows: "Megnyitás", dataUnavailable: "Az időjárási adatok nem érhetők el", historicalNote: "Rácspontokra rekonstruált múltbeli adat; nem meteorológiai állomás mérése.", recentNote: "A szolgáltató közelmúltbeli napi adata; modellezett és később módosulhat.", modelForecast: "Időjárási modell előrejelzése", historicalReanalysis: "Történeti időjárási újraelemzés", recentWeather: "Közelmúltbeli időjárási adat", outlookData: "Tíz év történeti mintáján alapuló éghajlati kilátás; nem napi előrejelzés.", sourceUnavailable: "Forrásadat nem érhető el"
+                }
+            };
+            const conditionHu = {"Clear sky":"Derült ég", "Mainly clear":"Túlnyomóan derült", "Partly cloudy":"Részben felhős", "Overcast":"Borult", "Fog":"Köd", "Freezing fog":"Ónos köd", "Light drizzle":"Enyhe szitálás", "Drizzle":"Szitálás", "Dense drizzle":"Sűrű szitálás", "Freezing drizzle":"Ónos szitálás", "Dense freezing drizzle":"Sűrű ónos szitálás", "Light rain":"Enyhe eső", "Rain":"Eső", "Heavy rain":"Heves eső", "Freezing rain":"Ónos eső", "Heavy freezing rain":"Heves ónos eső", "Light snow":"Enyhe havazás", "Snow":"Havazás", "Heavy snow":"Heves havazás", "Snow grains":"Hódara", "Light rain showers":"Enyhe zápor", "Rain showers":"Zápor", "Heavy rain showers":"Heves zápor", "Light snow showers":"Enyhe hózápor", "Heavy snow showers":"Heves hózápor", "Thunderstorm":"Zivatar", "Thunderstorm with hail":"Jégesővel kísért zivatar", "Heavy thunderstorm":"Heves zivatar", "Thunderstorm with heavy hail":"Heves jégesővel kísért zivatar", "Conditions unavailable":"Az időjárási adatok nem érhetők el", "Variable conditions":"Változékony időjárás"};
+            const basisHu = {"Historical weather reanalysis":"Történeti időjárási újraelemzés", "Recent weather data":"Közelmúltbeli időjárási adat", "Weather model forecast":"Időjárási modell előrejelzése", "10-year climate outlook":"10 éves éghajlati kilátás", "Legacy simulator sample":"Régi szimulátorminta"};
+            let language = localStorage.getItem("weather-journal-language") === "hu" ? "hu" : "en";
+            let databasePromise;
+            let storageFallback = false;
+            let reports = [];
+            let favorites = [];
+            let activeReportId = "";
+            let searchTimer;
+            let requestController;
+            let selectedSavedId = "";
+
+            const t = (key, values = {}) => {
+                let phrase = translations[language][key] || translations.en[key] || key;
+                Object.entries(values).forEach(([name, value]) => { phrase = phrase.replace(`{${name}}`, value); });
+                return phrase;
+            };
+            const escapeHtml = (value) => String(value ?? "").replace(/[&<>"']/g, (char) => ({"&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;"}[char]));
+            const id = () => (crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(16).slice(2)}`);
+            const displayText = (value) => language === "hu" ? (conditionHu[value] || value || "—") : (value || "—");
+            const displayBasis = (value) => language === "hu" ? (basisHu[value] || value || "—") : (value || "—");
+            const safeSourceUrl = (value) => { try { const url = new URL(value); return url.protocol === "https:" ? url.href : ""; } catch { return ""; } };
+            const number = (value, digits = 1) => value === null || value === undefined || value === "" ? "—" : new Intl.NumberFormat(language === "hu" ? "hu-HU" : "en-GB", {maximumFractionDigits: digits}).format(Number(value));
+            const formatDate = (value) => {
+                if (!value) return "—";
+                const parsed = new Date(`${value}T12:00:00`);
+                return Number.isNaN(parsed.valueOf()) ? value : new Intl.DateTimeFormat(language === "hu" ? "hu-HU" : "en-GB", {year:"numeric", month:"short", day:"numeric"}).format(parsed);
+            };
+
+            const openDatabase = () => {
+                if (!window.indexedDB) return Promise.reject(new Error("IndexedDB unavailable"));
+                if (!databasePromise) databasePromise = new Promise((resolve, reject) => {
+                    const request = indexedDB.open("weather-journal-personal", 1);
+                    request.onupgradeneeded = () => {
+                        const db = request.result;
+                        if (!db.objectStoreNames.contains("reports")) db.createObjectStore("reports", {keyPath:"id"});
+                        if (!db.objectStoreNames.contains("favorites")) db.createObjectStore("favorites", {keyPath:"id"});
+                    };
+                    request.onsuccess = () => resolve(request.result);
+                    request.onerror = () => reject(request.error);
+                });
+                return databasePromise;
+            };
+            const localKey = (store) => `weather-journal-${store}`;
+            const localRead = (store) => {
+                try { const value = JSON.parse(localStorage.getItem(localKey(store)) || "[]"); return Array.isArray(value) ? value : []; }
+                catch { return []; }
+            };
+            const localWrite = (store, value) => localStorage.setItem(localKey(store), JSON.stringify(value));
+            const getAll = async (store) => {
+                if (storageFallback) return localRead(store);
+                try {
+                    const db = await openDatabase();
+                    return await new Promise((resolve, reject) => {
+                        const request = db.transaction(store, "readonly").objectStore(store).getAll();
+                        request.onsuccess = () => resolve(request.result || []);
+                        request.onerror = () => reject(request.error);
+                    });
+                } catch { storageFallback = true; return localRead(store); }
+            };
+            const putMany = async (store, items) => {
+                if (storageFallback) {
+                    const rows = localRead(store);
+                    const byId = new Map(rows.map((row) => [row.id, row]));
+                    items.forEach((item) => byId.set(item.id, item));
+                    localWrite(store, [...byId.values()]);
+                    return;
+                }
+                try {
+                    const db = await openDatabase();
+                    await new Promise((resolve, reject) => {
+                        const transaction = db.transaction(store, "readwrite");
+                        items.forEach((item) => transaction.objectStore(store).put(item));
+                        transaction.oncomplete = resolve;
+                        transaction.onerror = () => reject(transaction.error);
+                        transaction.onabort = () => reject(transaction.error);
+                    });
+                } catch {
+                    storageFallback = true;
+                    const rows = localRead(store);
+                    const byId = new Map(rows.map((row) => [row.id, row]));
+                    items.forEach((item) => byId.set(item.id, item));
+                    localWrite(store, [...byId.values()]);
+                }
+            };
+            const deleteItem = async (store, itemId) => {
+                if (storageFallback) { localWrite(store, localRead(store).filter((item) => item.id !== itemId)); return; }
+                try {
+                    const db = await openDatabase();
+                    await new Promise((resolve, reject) => {
+                        const transaction = db.transaction(store, "readwrite");
+                        transaction.objectStore(store).delete(itemId);
+                        transaction.oncomplete = resolve;
+                        transaction.onerror = () => reject(transaction.error);
+                    });
+                } catch { storageFallback = true; localWrite(store, localRead(store).filter((item) => item.id !== itemId)); }
+            };
+            const replaceAll = async (store, items) => {
+                if (storageFallback) { localWrite(store, items); return; }
+                try {
+                    const db = await openDatabase();
+                    await new Promise((resolve, reject) => {
+                        const transaction = db.transaction(store, "readwrite");
+                        const objectStore = transaction.objectStore(store);
+                        objectStore.clear();
+                        items.forEach((item) => objectStore.put(item));
+                        transaction.oncomplete = resolve;
+                        transaction.onerror = () => reject(transaction.error);
+                    });
+                } catch { storageFallback = true; localWrite(store, items); }
+            };
+            const clearLocalData = async () => {
+                await replaceAll("reports", []);
+                await replaceAll("favorites", []);
+            };
+
+            const applyLanguage = () => {
+                document.documentElement.lang = language;
+                document.querySelectorAll("[data-i18n]").forEach((element) => { element.textContent = t(element.dataset.i18n); });
+                document.querySelectorAll("[data-i18n-placeholder]").forEach((element) => { element.placeholder = t(element.dataset.i18nPlaceholder); });
+                document.querySelectorAll(".language-option").forEach((button) => {
+                    const active = button.dataset.language === language;
+                    button.classList.toggle("is-active", active);
+                    button.setAttribute("aria-pressed", String(active));
+                });
+                renderDashboard();
+                renderFavorites();
+            };
+            document.querySelectorAll(".language-option").forEach((button) => button.addEventListener("click", () => {
+                language = button.dataset.language;
+                localStorage.setItem("weather-journal-language", language);
+                applyLanguage();
+            }));
+
             const queryInput = document.getElementById("location-query");
             const resultsBox = document.getElementById("location-results");
-            const status = document.getElementById("location-status");
+            const locationStatus = document.getElementById("location-status");
             const selectedBox = document.getElementById("selected-location");
             const selectedLabel = document.getElementById("selected-label");
             const mapWrap = document.getElementById("area-map-wrap");
@@ -329,19 +323,26 @@
             const startDate = document.getElementById("date");
             const endDate = document.getElementById("end-date");
             const form = document.getElementById("weather-form");
-            const fields = {
-                name: document.getElementById("location-name"),
-                region: document.getElementById("location-region"),
-                country: document.getElementById("location-country"),
-                latitude: document.getElementById("latitude"),
-                longitude: document.getElementById("longitude")
-            };
-            let searchTimer;
-            let requestController;
-            let selectedSavedId = "";
+            let selectedLocation = null;
 
+            const showStatus = (message, kind = "") => {
+                const box = document.getElementById("app-status");
+                box.textContent = message;
+                box.className = `notice${kind ? ` notice-${kind}` : ""}`;
+                box.hidden = !message;
+                if (message) box.scrollIntoView({behavior:"smooth", block:"nearest"});
+            };
+            const showMap = (place) => {
+                const lat = Number(place.latitude), lon = Number(place.longitude);
+                if (!Number.isFinite(lat) || !Number.isFinite(lon)) return;
+                const south = Math.max(-85, lat - 0.18), north = Math.min(85, lat + 0.18);
+                const west = Math.max(-180, lon - 0.22), east = Math.min(180, lon + 0.22);
+                mapFrame.src = `https://www.openstreetmap.org/export/embed.html?bbox=${west},${south},${east},${north}&layer=mapnik&marker=${lat.toFixed(4)},${lon.toFixed(4)}`;
+                mapLink.href = `https://www.openstreetmap.org/?mlat=${lat}&mlon=${lon}#map=10/${lat}/${lon}`;
+                mapWrap.hidden = false;
+            };
             const clearSelection = () => {
-                Object.values(fields).forEach((field) => { field.value = ""; });
+                selectedLocation = null;
                 selectedBox.hidden = true;
                 mapWrap.hidden = true;
                 saveButton.disabled = true;
@@ -349,28 +350,8 @@
                 removeButton.disabled = true;
                 savedPicker.value = "";
             };
-
-            const showMap = (place) => {
-                const lat = Number(place.latitude);
-                const lon = Number(place.longitude);
-                if (!Number.isFinite(lat) || !Number.isFinite(lon)) return;
-                const south = Math.max(-85, lat - 0.18);
-                const north = Math.min(85, lat + 0.18);
-                const west = Math.max(-180, lon - 0.22);
-                const east = Math.min(180, lon + 0.22);
-                const marker = `${lat.toFixed(4)},${lon.toFixed(4)}`;
-                const mapUrl = `https://www.openstreetmap.org/export/embed.html?bbox=${west},${south},${east},${north}&layer=mapnik&marker=${marker}`;
-                mapFrame.src = mapUrl;
-                mapLink.href = `https://www.openstreetmap.org/?mlat=${lat}&mlon=${lon}#map=10/${lat}/${lon}`;
-                mapWrap.hidden = false;
-            };
-
             const chooseLocation = (place, savedId = "") => {
-                fields.name.value = place.name || "";
-                fields.region.value = place.region || "";
-                fields.country.value = place.country || "";
-                fields.latitude.value = place.latitude;
-                fields.longitude.value = place.longitude;
+                selectedLocation = {...place};
                 selectedLabel.textContent = [place.name, place.region, place.country].filter(Boolean).join(", ");
                 queryInput.value = place.name || "";
                 selectedBox.hidden = false;
@@ -379,162 +360,193 @@
                 selectedSavedId = savedId;
                 removeButton.disabled = !savedId;
                 if (savedId) savedPicker.value = savedId;
-                status.textContent = "Area selected. The marker is a representative point, not an address.";
+                locationStatus.textContent = t("selectionNote");
                 showMap(place);
             };
-
-            const renderResults = (places) => {
+            const renderSearchResults = (places) => {
                 resultsBox.replaceChildren();
                 places.forEach((place) => {
                     const option = document.createElement("button");
-                    option.type = "button";
-                    option.className = "location-option";
-                    option.setAttribute("role", "option");
-                    const main = document.createElement("span");
-                    main.className = "location-option-name";
-                    main.textContent = place.name;
-                    const detail = document.createElement("span");
-                    detail.className = "location-option-detail";
-                    detail.textContent = [place.region, place.country].filter(Boolean).join(", ");
-                    option.append(main, detail);
-                    option.addEventListener("click", () => chooseLocation(place));
-                    resultsBox.append(option);
+                    option.type = "button"; option.className = "location-option"; option.setAttribute("role", "option");
+                    const main = document.createElement("span"); main.className = "location-option-name"; main.textContent = place.name;
+                    const detail = document.createElement("span"); detail.className = "location-option-detail"; detail.textContent = [place.region, place.country].filter(Boolean).join(", ");
+                    option.append(main, detail); option.addEventListener("click", () => chooseLocation(place)); resultsBox.append(option);
                 });
             };
-
-            const addFavoriteOption = (location) => {
-                const label = [location.name, location.region, location.country].filter(Boolean).join(", ");
-                [savedPicker, comparePicker].forEach((select) => {
-                    if ([...select.options].some((option) => option.value === location.id)) return;
-                    const option = document.createElement("option");
-                    option.value = location.id;
-                    option.textContent = label;
-                    if (select === savedPicker) option.dataset.location = JSON.stringify(location);
-                    select.append(option);
+            const renderFavorites = () => {
+                const selected = savedPicker.value;
+                const compare = comparePicker.value;
+                savedPicker.replaceChildren(new Option(t("chooseSavedArea"), ""));
+                comparePicker.replaceChildren(new Option(t("noComparison"), ""));
+                favorites.forEach((place) => {
+                    const label = [place.name, place.region, place.country].filter(Boolean).join(", ");
+                    savedPicker.add(new Option(label, place.id));
+                    comparePicker.add(new Option(label, place.id));
                 });
+                savedPicker.value = favorites.some((place) => place.id === selected) ? selected : "";
+                comparePicker.value = favorites.some((place) => place.id === compare) ? compare : "";
             };
-
             queryInput.addEventListener("input", () => {
-                clearTimeout(searchTimer);
-                clearSelection();
-                resultsBox.replaceChildren();
+                clearTimeout(searchTimer); clearSelection(); resultsBox.replaceChildren();
                 const query = queryInput.value.trim();
-                if (query.length < 2) {
-                    status.textContent = "Type at least two letters to search.";
-                    return;
-                }
-                status.textContent = "Searching areas…";
+                if (query.length < 2) { locationStatus.textContent = t("typeTwoLetters"); return; }
+                locationStatus.textContent = t("searching");
                 searchTimer = setTimeout(async () => {
                     if (requestController) requestController.abort();
                     requestController = new AbortController();
                     try {
-                        const response = await fetch(`/locations?q=${encodeURIComponent(query)}`, {signal: requestController.signal});
+                        const response = await fetch(`/locations?q=${encodeURIComponent(query)}&lang=${language}`, {signal:requestController.signal});
                         const data = await response.json();
-                        if (!response.ok) throw new Error(data.error || "Location search failed.");
-                        renderResults(data.results || []);
-                        status.textContent = data.results?.length ? "Select a city or area from the list." : "No matching locations found.";
-                    } catch (error) {
-                        if (error.name !== "AbortError") status.textContent = error.message || "Location search failed.";
-                    }
+                        if (!response.ok) throw new Error(data.error || t("requestFailed"));
+                        renderSearchResults(data.results || []);
+                        locationStatus.textContent = data.results?.length ? t("selectMatch") : t("noMatch");
+                    } catch (error) { if (error.name !== "AbortError") locationStatus.textContent = error.message || t("requestFailed"); }
                 }, 250);
             });
-
             savedPicker.addEventListener("change", () => {
-                const option = savedPicker.selectedOptions[0];
-                if (!option || !option.value) {
-                    removeButton.disabled = true;
-                    return;
-                }
-                try {
-                    chooseLocation(JSON.parse(option.dataset.location), option.value);
-                } catch {
-                    status.textContent = "Could not load that saved area.";
-                }
+                const place = favorites.find((favorite) => favorite.id === savedPicker.value);
+                if (!place) { removeButton.disabled = true; return; }
+                chooseLocation(place, place.id);
             });
-
             saveButton.addEventListener("click", async () => {
-                if (!fields.name.value) return;
-                favoriteStatus.textContent = "Saving area…";
-                try {
-                    const response = await fetch("/favorites", {
-                        method: "POST",
-                        headers: {"Content-Type": "application/json"},
-                        body: JSON.stringify({
-                            name: fields.name.value,
-                            region: fields.region.value,
-                            country: fields.country.value,
-                            latitude: fields.latitude.value,
-                            longitude: fields.longitude.value
-                        })
-                    });
-                    const data = await response.json();
-                    if (!response.ok) throw new Error(data.error || "Could not save this area.");
-                    addFavoriteOption(data.location);
-                    savedPicker.value = data.location.id;
-                    selectedSavedId = data.location.id;
-                    removeButton.disabled = false;
-                    favoriteStatus.textContent = "Area saved.";
-                } catch (error) {
-                    favoriteStatus.textContent = error.message || "Could not save this area.";
-                }
+                if (!selectedLocation) return;
+                const exists = favorites.find((place) => Number(place.latitude) === Number(selectedLocation.latitude) && Number(place.longitude) === Number(selectedLocation.longitude));
+                if (exists) { chooseLocation(exists, exists.id); favoriteStatus.textContent = t("areaSaved"); return; }
+                const place = {...selectedLocation, id:id()};
+                favorites.push(place);
+                await putMany("favorites", [place]);
+                renderFavorites(); chooseLocation(place, place.id); favoriteStatus.textContent = t("areaSaved");
             });
-
             removeButton.addEventListener("click", async () => {
                 if (!selectedSavedId) return;
-                try {
-                    const response = await fetch(`/favorites/${encodeURIComponent(selectedSavedId)}`, {method: "DELETE"});
-                    const data = await response.json();
-                    if (!response.ok) throw new Error(data.error || "Could not remove this area.");
-                    [savedPicker, comparePicker].forEach((select) => {
-                        [...select.options].forEach((option) => {
-                            if (option.value === selectedSavedId) option.remove();
-                        });
-                    });
-                    comparePicker.value = "";
-                    favoriteStatus.textContent = "Saved area removed.";
-                    clearSelection();
-                } catch (error) {
-                    favoriteStatus.textContent = error.message || "Could not remove this area.";
-                }
+                await deleteItem("favorites", selectedSavedId);
+                favorites = favorites.filter((place) => place.id !== selectedSavedId);
+                comparePicker.value = ""; renderFavorites(); favoriteStatus.textContent = t("areaRemoved"); clearSelection();
             });
-
-            document.getElementById("change-location").addEventListener("click", () => {
-                clearSelection();
-                queryInput.focus();
-            });
+            document.getElementById("change-location").addEventListener("click", () => { clearSelection(); queryInput.focus(); });
 
             const updateDateRange = () => {
                 endDate.min = startDate.value || "1940-01-01";
                 if (!startDate.value) return;
-                const start = new Date(`${startDate.value}T12:00:00`);
-                start.setDate(start.getDate() + 30);
-                endDate.max = `${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, "0")}-${String(start.getDate()).padStart(2, "0")}`;
-                const rangeMode = Boolean(endDate.value);
-                comparePicker.disabled = rangeMode;
+                const start = new Date(`${startDate.value}T12:00:00`); start.setDate(start.getDate() + 30);
+                endDate.max = `${start.getFullYear()}-${String(start.getMonth()+1).padStart(2,"0")}-${String(start.getDate()).padStart(2,"0")}`;
+                const rangeMode = Boolean(endDate.value); comparePicker.disabled = rangeMode;
                 if (rangeMode) comparePicker.value = "";
             };
-            startDate.addEventListener("change", updateDateRange);
-            endDate.addEventListener("change", updateDateRange);
-            updateDateRange();
+            startDate.addEventListener("change", updateDateRange); endDate.addEventListener("change", updateDateRange); updateDateRange();
 
-            form.addEventListener("submit", (event) => {
-                if (!fields.name.value || !fields.latitude.value || !fields.longitude.value) {
-                    event.preventDefault();
-                    status.textContent = "Search for and select a city or region before continuing.";
-                    queryInput.focus();
-                    return;
-                }
-                if (endDate.value && endDate.value < startDate.value) {
-                    event.preventDefault();
-                    status.textContent = "The end date must be the same day or after the start date.";
-                    endDate.focus();
-                    return;
-                }
-                if (endDate.value && comparePicker.value) {
-                    event.preventDefault();
-                    favoriteStatus.textContent = "Choose either a date range or a single-day area comparison.";
-                }
+            const reportCondition = (report) => displayText(report.condition || t("dataUnavailable"));
+            const scenarioLabel = (report) => ({forecast:t("forecast"), historical:t("historical"), climate_outlook:t("climateType"), legacy:t("legacy")}[report.scenario_type] || displayBasis(report.data_basis));
+            const temperature = (value) => value === null || value === undefined ? "—" : number(value);
+            const precipitationValue = (report) => report.precipitation_probability !== null && report.precipitation_probability !== undefined ? `${number(report.precipitation_probability,0)}% ${t("chance")}` : report.precipitation_sum !== null && report.precipitation_sum !== undefined ? `${number(report.precipitation_sum)} mm` : "—";
+            const reportMarkup = (report) => {
+                const scenario = report.scenario_type || "legacy";
+                const confidence = report.confidence_label ? `<span class="confidence-badge confidence-${escapeHtml(String(report.confidence_label).toLowerCase())}">${escapeHtml(t(String(report.confidence_label).toLowerCase()))} ${escapeHtml(t("confidence"))} · ${escapeHtml(report.lead_days ?? "—")}${language === "hu" ? " " : "d "}${escapeHtml(t("lead"))}</span>` : "";
+                const normal = report.normal_temperature !== null && report.normal_temperature !== undefined ? `<div class="normal-comparison"><div class="normal-main"><span class="normal-kicker">${escapeHtml(t("normalComparison"))}</span><strong>${Number(report.temperature_vs_normal) > 0 ? "+" : ""}${escapeHtml(number(report.temperature_vs_normal))}°C <span>${escapeHtml(t("vsTypical"))}</span></strong></div><div class="normal-range"><span>${escapeHtml(t("typicalMean"))}</span><strong>${escapeHtml(number(report.normal_range_low))}°–${escapeHtml(number(report.normal_range_high))}°C</strong></div><div class="normal-rain"><span>${escapeHtml(t("typicalRain"))}</span><strong>${report.normal_precipitation_probability == null ? "—" : `${escapeHtml(number(report.normal_precipitation_probability,0))}%`}</strong></div></div><p class="confidence-explainer">${escapeHtml(t("normalExplainer", {count:report.normal_sample_count ?? "—"}))}</p>` : "";
+                const outlook = scenario === "climate_outlook" && report.temperature_range_low != null ? `<div class="range-note">${escapeHtml(t("typicalRange"))} <strong>${escapeHtml(number(report.temperature_range_low))}°–${escapeHtml(number(report.temperature_range_high))}°C</strong></div>` : "";
+                const basis = report.data_basis || ({forecast:"Weather model forecast", historical:"Historical weather reanalysis", climate_outlook:"10-year climate outlook"}[scenario]) || t("sourceUnavailable");
+                let note = report.data_note || "";
+                if (language === "hu") note = note.includes("Recent daily data") ? t("recentNote") : note.includes("Reconstructed gridded") ? t("historicalNote") : note.includes("10-year") ? t("outlookData") : note;
+                const comparisonGroup = report.comparison_group || "";
+                return `<div class="report-topline"><div><p class="eyebrow">${escapeHtml(t("latestLookup"))} <span class="report-date">· ${escapeHtml(formatDate(report.date || report.timestamp))}</span></p><h2 id="report-title">${escapeHtml(report.location || "Selected area")}</h2><p class="report-place">${escapeHtml([report.region,report.country].filter(Boolean).join(", "))}</p></div><div class="badge-stack"><span class="report-badge badge-${escapeHtml(scenario)}">${escapeHtml(scenarioLabel(report))}</span>${confidence}</div></div>
+                    <div class="report-summary"><div class="condition-block"><span class="condition-spark" aria-hidden="true">✳</span><div><h3>${escapeHtml(reportCondition(report))}</h3><p>${escapeHtml(report.season || "")} ${escapeHtml(t("seasonConditions"))} ${escapeHtml(formatDate(report.date || report.timestamp))}</p></div></div><div class="temperature-block"><span class="temperature-value">${escapeHtml(temperature(report.temperature))}<sup>°C</sup></span>${report.temperature_min != null && report.temperature_max != null ? `<span class="temperature-range">${escapeHtml(number(report.temperature_min,0))}° <span>to</span> ${escapeHtml(number(report.temperature_max,0))}°</span>` : ""}</div></div>
+                    ${normal}${outlook}<div class="metric-grid"><div class="metric"><span class="metric-icon rain-icon" aria-hidden="true">◒</span><div><span class="metric-label">${escapeHtml(t("chancePrecipitation"))}</span><strong>${report.precipitation_probability == null ? "—" : `${escapeHtml(number(report.precipitation_probability,0))}%`}</strong></div></div><div class="metric"><span class="metric-icon drop-icon" aria-hidden="true">↓</span><div><span class="metric-label">${escapeHtml(t("precipitation"))}</span><strong>${report.precipitation_sum == null ? "—" : `${escapeHtml(number(report.precipitation_sum))} mm`}</strong></div></div><div class="metric"><span class="metric-icon wind-icon" aria-hidden="true">↗</span><div><span class="metric-label">${escapeHtml(t("peakWind"))}</span><strong>${report.wind_speed == null ? "—" : `${escapeHtml(number(report.wind_speed,0))} km/h`}</strong></div></div><div class="metric"><span class="metric-icon feels-icon" aria-hidden="true">≈</span><div><span class="metric-label">${escapeHtml(t("feelsLike"))}</span><strong>${report.feels_like_min == null || report.feels_like_max == null ? "—" : `${escapeHtml(number(report.feels_like_min,0))}°–${escapeHtml(number(report.feels_like_max,0))}°C`}</strong></div></div></div>
+                    <div class="source-note"><div class="source-copy"><span class="source-dot" aria-hidden="true"></span><p><strong>${escapeHtml(displayBasis(basis))}</strong><span>${escapeHtml(note)}</span></p></div>${report.sample_count ? `<span class="sample-count">${escapeHtml(report.sample_count)} ${escapeHtml(t("sampleDays"))}</span>` : ""}${safeSourceUrl(report.source_url) ? `<a href="${escapeHtml(safeSourceUrl(report.source_url))}" target="_blank" rel="noopener noreferrer">${escapeHtml(t("dataSource"))}</a>` : ""}</div>`;
+            };
+            const comparisonMarkup = (places) => {
+                if (places.length !== 2) return "";
+                return `<div class="section-heading"><div><p class="eyebrow">${escapeHtml(t("sameDate"))}</p><h2 id="comparison-title">${escapeHtml(t("areaComparison"))}</h2></div><span class="step-tag">${escapeHtml(formatDate(places[0].date))}</span></div><div class="comparison-grid">${places.map((place) => `<article class="comparison-place"><div class="comparison-place-heading"><div><h3>${escapeHtml(place.location || "Area")}</h3><p>${escapeHtml([place.region,place.country].filter(Boolean).join(", "))}</p></div><span>${escapeHtml(reportCondition(place))}</span></div><div class="comparison-temperature">${escapeHtml(temperature(place.temperature))}<sup>°C</sup></div><div class="comparison-metrics"><span>${escapeHtml(t("highLow"))}<strong>${place.temperature_min == null || place.temperature_max == null ? "—" : `${escapeHtml(number(place.temperature_min))}° / ${escapeHtml(number(place.temperature_max))}°`}</strong></span><span>${escapeHtml(t("precipitation"))}<strong>${escapeHtml(precipitationValue(place))}</strong></span><span>${escapeHtml(t("peakWind"))}<strong>${place.wind_speed == null ? "—" : `${escapeHtml(number(place.wind_speed,0))} km/h`}</strong></span></div></article>`).join("")}</div>`;
+            };
+            const timelineMarkup = (days) => {
+                if (!days.length) return "";
+                const values = days.flatMap((day) => [day.temperature_min, day.temperature_max].filter((value) => value != null).map(Number));
+                const min = values.length ? Math.min(...values) : null, max = values.length ? Math.max(...values) : null;
+                const span = Math.max((max ?? 0) - (min ?? 0), 1);
+                return `<div class="section-heading timeline-heading"><div><p class="eyebrow">${escapeHtml(t("dailyOverview"))}</p><h2 id="timeline-title">${days.length}${escapeHtml(t("dayTimeline"))}</h2></div><span class="step-tag">${escapeHtml(formatDate(days[0].date))} → ${escapeHtml(formatDate(days.at(-1).date))}</span></div>${min !== null ? `<p class="timeline-range">${escapeHtml(t("temperaturePeriod"))} <strong>${escapeHtml(number(min))}°–${escapeHtml(number(max))}°C</strong></p>` : ""}<div class="timeline-grid">${days.map((day) => { const low = Number(day.temperature_min ?? day.temperature ?? min ?? 0), high = Number(day.temperature_max ?? day.temperature ?? low); const left = min === null ? 0 : 100 * (low-min)/span; const width = min === null ? 5 : Math.max(3, 100*(high-low)/span); const basisKey = day.scenario_type === "forecast" ? `${t(String(day.confidence_label || "lower").toLowerCase())} ${t("confidence")}` : day.scenario_type === "climate_outlook" ? t("climateBasis") : day.scenario_type === "historical" ? t("historicalBasis") : displayBasis(day.data_basis); return `<article class="timeline-day"><div class="timeline-date">${escapeHtml(formatDate(day.date))}</div><div class="timeline-condition">${escapeHtml(reportCondition(day))}</div><div class="timeline-basis">${escapeHtml(basisKey)}</div><div class="timeline-temperature">${escapeHtml(temperature(day.temperature))}<sup>°</sup></div><div class="timeline-track" aria-label="Temperature range"><span style="left:${left}%;width:${width}%"></span></div><div class="timeline-extremes"><span>${day.temperature_min == null ? "—" : `${escapeHtml(number(day.temperature_min))}°`}</span><span>${day.temperature_max == null ? "—" : `${escapeHtml(number(day.temperature_max))}°`}</span></div><div class="timeline-rain">${escapeHtml(t("precipitationShort"))} <strong>${escapeHtml(precipitationValue(day))}</strong></div></article>`; }).join("")}</div>`;
+            };
+            const renderHistory = () => {
+                const history = document.getElementById("history-content");
+                document.getElementById("report-count").textContent = String(reports.length);
+                const temperatures = reports.map((report) => Number(report.temperature)).filter(Number.isFinite);
+                document.getElementById("average-temperature").textContent = temperatures.length ? `${number(temperatures.reduce((sum,value) => sum+value,0)/temperatures.length)}°C` : "—";
+                if (!reports.length) { history.innerHTML = `<div class="empty-state"><span aria-hidden="true">☼</span><p>${escapeHtml(t("emptyHistory"))}</p></div>`; return; }
+                const rows = [...reports].sort((a,b) => String(b.saved_at || "").localeCompare(String(a.saved_at || "")) || String(b.date || "").localeCompare(String(a.date || "")));
+                history.innerHTML = `<div class="table-wrap"><table><thead><tr><th>${escapeHtml(t("tableDate"))}</th><th>${escapeHtml(t("tableArea"))}</th><th>${escapeHtml(t("tableType"))}</th><th>${escapeHtml(t("tableConditions"))}</th><th>${escapeHtml(t("tableTemperature"))}</th><th>${escapeHtml(t("rainChance"))}</th><th></th></tr></thead><tbody>${rows.map((report) => `<tr><td>${escapeHtml(formatDate(report.date || report.timestamp))}</td><td>${escapeHtml(report.location || "—")}</td><td><span class="table-type">${escapeHtml(displayBasis(report.data_basis || scenarioLabel(report)))}</span></td><td>${escapeHtml(reportCondition(report))}</td><td>${report.temperature == null ? "—" : `${escapeHtml(number(report.temperature))}°C`}</td><td>${report.precipitation_probability == null ? "—" : `${escapeHtml(number(report.precipitation_probability,0))}%`}</td><td><button type="button" class="history-open" data-report-id="${escapeHtml(report.id)}">${escapeHtml(t("savedRows"))}</button></td></tr>`).join("")}</tbody></table></div>`;
+                history.querySelectorAll("[data-report-id]").forEach((button) => button.addEventListener("click", () => { activeReportId = button.dataset.reportId; renderDashboard(); document.getElementById("latest-section").scrollIntoView({behavior:"smooth", block:"start"}); }));
+            };
+            const renderDashboard = () => {
+                const latestSection = document.getElementById("latest-section");
+                const comparisonSection = document.getElementById("comparison-section");
+                const timelineSection = document.getElementById("timeline-section");
+                let latest = reports.find((report) => report.id === activeReportId);
+                if (!latest) latest = [...reports].sort((a,b) => String(a.saved_at || "").localeCompare(String(b.saved_at || "")) || String(a.date || "").localeCompare(String(b.date || ""))).at(-1);
+                latestSection.hidden = !latest;
+                latestSection.innerHTML = latest ? reportMarkup(latest) : "";
+                const compared = latest?.comparison_group ? reports.filter((report) => report.comparison_group === latest.comparison_group).slice(0,2) : [];
+                comparisonSection.hidden = compared.length !== 2;
+                comparisonSection.innerHTML = comparisonMarkup(compared);
+                const days = latest?.range_group ? reports.filter((report) => report.range_group === latest.range_group).sort((a,b) => String(a.date).localeCompare(String(b.date))) : [];
+                timelineSection.hidden = days.length < 2;
+                timelineSection.innerHTML = timelineMarkup(days);
+                renderHistory();
+            };
+
+            form.addEventListener("submit", async (event) => {
+                event.preventDefault();
+                if (!selectedLocation) { locationStatus.textContent = t("chooseAreaFirst"); queryInput.focus(); return; }
+                if (endDate.value && endDate.value < startDate.value) { locationStatus.textContent = t("invalidRange"); endDate.focus(); return; }
+                if (endDate.value && comparePicker.value) { favoriteStatus.textContent = t("chooseRangeOrCompare"); return; }
+                showStatus(t("loading"));
+                const submitButton = document.getElementById("submit-button"); submitButton.disabled = true;
+                try {
+                    const compareLocation = favorites.find((place) => place.id === comparePicker.value) || null;
+                    const response = await fetch("/generate", {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({date:startDate.value, end_date:endDate.value, location:selectedLocation, compare_location:compareLocation})});
+                    const data = await response.json();
+                    if (!response.ok) throw new Error(data.error || t("requestFailed"));
+                    const group = endDate.value ? id() : "";
+                    const comparisonGroup = data.comparison_report ? id() : "";
+                    const now = new Date().toISOString();
+                    const newReports = (data.reports || []).map((report) => ({...report, id:id(), saved_at:now, range_group:group || undefined, comparison_group:comparisonGroup || undefined}));
+                    if (data.comparison_report) newReports.push({...data.comparison_report, id:id(), saved_at:now, comparison_group:comparisonGroup});
+                    if (!newReports.length) throw new Error(t("requestFailed"));
+                    await putMany("reports", newReports); reports.push(...newReports); activeReportId = newReports[0].id; renderDashboard();
+                    showStatus(endDate.value ? t("rangeSaved", {count:newReports.length}) : data.comparison_report ? t("compareSaved") : t("reportSaved"), "success");
+                } catch (error) { showStatus(error.message || t("requestFailed"), "error"); }
+                finally { submitButton.disabled = false; }
             });
+
+            document.getElementById("export-button").addEventListener("click", () => {
+                const backup = {format:"weather-journal-backup", version:1, exported_at:new Date().toISOString(), reports, favorites};
+                const blob = new Blob([JSON.stringify(backup, null, 2)], {type:"application/json"});
+                const link = document.createElement("a"); link.href = URL.createObjectURL(blob); link.download = `weather-journal-backup-${new Date().toISOString().slice(0,10)}.json`; link.click(); URL.revokeObjectURL(link.href);
+            });
+            document.getElementById("import-file").addEventListener("change", async (event) => {
+                const file = event.target.files?.[0]; if (!file) return;
+                try {
+                    const backup = JSON.parse(await file.text());
+                    if (backup.format !== "weather-journal-backup" || !Array.isArray(backup.reports) || !Array.isArray(backup.favorites)) throw new Error(t("invalidBackup"));
+                    const importedReports = backup.reports.filter((item) => item && typeof item === "object").map((item) => ({...item, id:item.id || id()}));
+                    const importedFavorites = backup.favorites.filter((item) => item && typeof item === "object").map((item) => ({...item, id:item.id || id()}));
+                    await putMany("reports", importedReports); await putMany("favorites", importedFavorites);
+                    reports = await getAll("reports"); favorites = await getAll("favorites"); renderFavorites(); renderDashboard(); showStatus(t("importSuccess"), "success");
+                } catch (error) { showStatus(error.message || t("invalidBackup"), "error"); }
+                event.target.value = "";
+            });
+            document.getElementById("clear-data-button").addEventListener("click", async () => {
+                if (!window.confirm(t("confirmClear"))) return;
+                try { await clearLocalData(); reports = []; favorites = []; activeReportId = ""; renderFavorites(); renderDashboard(); showStatus(t("cleared"), "success"); }
+                catch { showStatus(t("storageFailed"), "error"); }
+            });
+
+            const initialize = async () => {
+                const now = new Date(); startDate.value = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}-${String(now.getDate()).padStart(2,"0")}`;
+                updateDateRange();
+                try { [reports, favorites] = await Promise.all([getAll("reports"), getAll("favorites")]); }
+                catch { showStatus(t("storageFailed"), "error"); }
+                applyLanguage();
+                document.getElementById("storage-status").textContent = storageFallback ? t("storageFailed") : t("localSaved");
+            };
+            initialize();
         })();
     </script>
 </body>
