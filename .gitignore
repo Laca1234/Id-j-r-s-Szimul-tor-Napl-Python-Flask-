@@ -219,3 +219,7 @@ __marimo__/
 # Streamlit
 .streamlit/secrets.toml
 weather_log.json
+.weather_cache.json
+.weather_cache.json.tmp
+.saved_locations.json
+.saved_locations.json.tmp

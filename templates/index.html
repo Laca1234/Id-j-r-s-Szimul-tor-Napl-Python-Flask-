@@ -41,7 +41,7 @@
                 </div>
 
                 <form action="{{ url_for('generate') }}" method="post" id="weather-form">
-                    <div class="form-grid">
+                <div class="form-grid">
                         <div class="field date-field">
                             <label for="date">Date</label>
                             <div class="input-wrap date-wrap">
@@ -50,6 +50,15 @@
                             </div>
                             <p class="field-help">Any date from 1940 onward, past or future.</p>
                         </div>
+
+                    <div class="field end-date-field">
+                        <label for="end-date">Through <span class="optional-label">optional</span></label>
+                        <div class="input-wrap date-wrap">
+                            <span class="input-icon" aria-hidden="true">↔</span>
+                            <input id="end-date" name="end_date" type="date" min="1940-01-01" aria-describedby="range-help">
+                        </div>
+                        <p id="range-help" class="field-help">Add up to 31 days for a daily timeline.</p>
+                    </div>
 
                         <div class="field location-field">
                             <label for="location-query">Area</label>
@@ -65,6 +74,10 @@
                                 <span id="selected-label"></span>
                                 <button type="button" id="change-location" class="change-location">Change</button>
                             </div>
+                            <div id="area-map-wrap" class="area-map-wrap" hidden>
+                                <iframe id="area-map" title="Approximate selected area map" loading="lazy" referrerpolicy="no-referrer"></iframe>
+                                <a id="area-map-link" href="#" target="_blank" rel="noopener noreferrer">Open map ↗</a>
+                            </div>
                             <input type="hidden" name="location_name" id="location-name">
                             <input type="hidden" name="location_region" id="location-region">
                             <input type="hidden" name="location_country" id="location-country">
@@ -72,6 +85,32 @@
                             <input type="hidden" name="longitude" id="longitude">
                         </div>
                     </div>
+
+                <div class="saved-area-tools">
+                    <div class="saved-area-field">
+                        <label for="saved-area-picker">Saved areas</label>
+                        <div class="saved-area-controls">
+                            <select id="saved-area-picker">
+                                <option value="">Choose a saved area</option>
+                                {% for area in favorites %}
+                                <option value="{{ area.id }}" data-location='{{ area|tojson|forceescape }}'>{{ area.name }}{% if area.region %}, {{ area.region }}{% endif %}{% if area.country %}, {{ area.country }}{% endif %}</option>
+                                {% endfor %}
+                            </select>
+                            <button id="remove-area-button" type="button" class="quiet-button" disabled>Remove</button>
+                        </div>
+                    </div>
+                    <div class="saved-area-field compare-picker-field">
+                        <label for="compare-location">Compare with <span class="optional-label">single day</span></label>
+                        <select id="compare-location" name="compare_location_id">
+                            <option value="">No comparison</option>
+                            {% for area in favorites %}
+                            <option value="{{ area.id }}">{{ area.name }}{% if area.region %}, {{ area.region }}{% endif %}{% if area.country %}, {{ area.country }}{% endif %}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <button id="save-area-button" type="button" class="quiet-button save-area-button" disabled>＋ Save selected area</button>
+                    <span id="favorite-status" class="favorite-status" aria-live="polite"></span>
+                </div>
 
                     <div class="form-footer">
                         <p><span class="lock-icon" aria-hidden="true">◌</span> Approximate area data. Your exact address is never requested.</p>
@@ -107,9 +146,14 @@
                         <p class="report-place">{{ latest.get('region', '') }}{% if latest.get('region') and latest.get('country') %}, {% endif %}{{ latest.get('country', '') }}</p>
                     </div>
                     {% set scenario_type = latest.get('scenario_type') or 'legacy' %}
-                    <span class="report-badge badge-{{ scenario_type }}">
-                        {% if scenario_type == 'forecast' %}Forecast{% elif scenario_type == 'climate_outlook' %}Climate outlook{% elif scenario_type == 'historical' %}Historical{% elif scenario_type == 'legacy' %}Legacy sample{% else %}{{ scenario_type }}{% endif %}
-                    </span>
+                    <div class="badge-stack">
+                        <span class="report-badge badge-{{ scenario_type }}">
+                            {% if scenario_type == 'forecast' %}Forecast{% elif scenario_type == 'climate_outlook' %}Climate outlook{% elif scenario_type == 'historical' %}Historical{% elif scenario_type == 'legacy' %}Legacy sample{% else %}{{ scenario_type }}{% endif %}
+                        </span>
+                        {% if latest.get('confidence_label') %}
+                        <span class="confidence-badge confidence-{{ latest.get('confidence_label')|lower }}">{{ latest.get('confidence_label') }} confidence · {{ latest.get('lead_days') }}d lead</span>
+                        {% endif %}
+                    </div>
                 </div>
 
                 <div class="report-summary">
@@ -127,6 +171,24 @@
                         {% endif %}
                     </div>
                 </div>
+
+                {% if latest.get('normal_temperature') is not none %}
+                <div class="normal-comparison">
+                    <div class="normal-main">
+                        <span class="normal-kicker">Compared with local climate normals</span>
+                        <strong>{% if latest.get('temperature_vs_normal') > 0 %}+{% endif %}{{ latest.get('temperature_vs_normal') }}°C <span>vs typical</span></strong>
+                    </div>
+                    <div class="normal-range">
+                        <span>Typical daily mean</span>
+                        <strong>{{ latest.get('normal_range_low') }}°–{{ latest.get('normal_range_high') }}°C</strong>
+                    </div>
+                    <div class="normal-rain">
+                        <span>Typical rain likelihood</span>
+                        <strong>{% if latest.get('normal_precipitation_probability') is not none %}{{ latest.get('normal_precipitation_probability') }}%{% else %}—{% endif %}</strong>
+                    </div>
+                </div>
+                <p class="confidence-explainer">The confidence label reflects forecast lead time. The comparison uses {{ latest.get('normal_sample_count') }} historical days around this time of year.</p>
+                {% endif %}
 
                 {% if latest.get('scenario_type') == 'climate_outlook' and latest.get('temperature_range_low') is not none %}
                 <div class="range-note">Typical daily mean range: <strong>{{ latest.get('temperature_range_low') }}° to {{ latest.get('temperature_range_high') }}°C</strong></div>
@@ -170,6 +232,47 @@
             </section>
             {% endif %}
 
+            {% if comparison_records|length == 2 %}
+            <section class="comparison-section" aria-labelledby="comparison-title">
+                <div class="section-heading">
+                    <div><p class="eyebrow">Same date, two areas</p><h2 id="comparison-title">Area comparison</h2></div>
+                    <span class="step-tag">{{ comparison_records[0].get('date') }}</span>
+                </div>
+                <div class="comparison-grid">
+                    {% for place in comparison_records %}
+                    <article class="comparison-place">
+                        <div class="comparison-place-heading"><div><h3>{{ place.get('location', 'Area') }}</h3><p>{{ place.get('region', '') }}{% if place.get('region') and place.get('country') %}, {% endif %}{{ place.get('country', '') }}</p></div><span>{{ place.get('condition', '—') }}</span></div>
+                        <div class="comparison-temperature">{{ place.get('temperature', '—') }}<sup>°C</sup></div>
+                        <div class="comparison-metrics"><span>High / low <strong>{% if place.get('temperature_min') is not none and place.get('temperature_max') is not none %}{{ place.get('temperature_min') }}° / {{ place.get('temperature_max') }}°{% else %}—{% endif %}</strong></span><span>Precipitation <strong>{% if place.get('precipitation_probability') is not none %}{{ place.get('precipitation_probability') }}% chance{% elif place.get('precipitation_sum') is not none %}{{ place.get('precipitation_sum')|round(1) }} mm{% else %}—{% endif %}</strong></span><span>Peak wind <strong>{% if place.get('wind_speed') is not none %}{{ place.get('wind_speed')|round|int }} km/h{% else %}—{% endif %}</strong></span></div>
+                    </article>
+                    {% endfor %}
+                </div>
+            </section>
+            {% endif %}
+
+            {% if timeline_records %}
+            <section class="timeline-section" aria-labelledby="timeline-title">
+                <div class="section-heading timeline-heading">
+                    <div><p class="eyebrow">Daily overview</p><h2 id="timeline-title">{{ timeline_records|length }}-day weather timeline</h2></div>
+                    <span class="step-tag">{{ timeline_records[0].get('date') }} → {{ timeline_records[-1].get('date') }}</span>
+                </div>
+                {% if timeline_max_temperature is not none %}<p class="timeline-range">Temperature range across this period: <strong>{{ timeline_min_temperature }}° to {{ timeline_max_temperature }}°C</strong></p>{% endif %}
+                <div class="timeline-grid">
+                    {% for day in timeline_records %}
+                    <article class="timeline-day">
+                        <div class="timeline-date">{{ day.get('date') }}</div>
+                        <div class="timeline-condition">{{ day.get('condition', '—') }}</div>
+                        <div class="timeline-basis">{% if day.get('scenario_type') == 'forecast' %}{{ day.get('confidence_label') }} confidence{% elif day.get('scenario_type') == 'climate_outlook' %}Climate outlook{% elif day.get('scenario_type') == 'historical' %}Historical data{% else %}{{ day.get('data_basis', 'Report') }}{% endif %}</div>
+                        <div class="timeline-temperature">{{ day.get('temperature', '—') }}<sup>°</sup></div>
+                        <div class="timeline-track" aria-label="Temperature range"><span style="left: {{ day.get('range_left', 0) }}%; width: {{ day.get('range_width', 5) }}%"></span></div>
+                        <div class="timeline-extremes"><span>{% if day.get('temperature_min') is not none %}{{ day.get('temperature_min') }}°{% else %}—{% endif %}</span><span>{% if day.get('temperature_max') is not none %}{{ day.get('temperature_max') }}°{% else %}—{% endif %}</span></div>
+                        <div class="timeline-rain">Precipitation {% if day.get('precipitation_probability') is not none %}<strong>{{ day.get('precipitation_probability') }}% chance</strong>{% elif day.get('precipitation_sum') is not none %}<strong>{{ day.get('precipitation_sum')|round(1) }} mm</strong>{% else %}<strong>—</strong>{% endif %}</div>
+                    </article>
+                    {% endfor %}
+                </div>
+            </section>
+            {% endif %}
+
             <section class="history-section">
                 <div class="section-heading history-heading">
                     <div><p class="eyebrow">Your saved lookups</p><h2>Report history</h2></div>
@@ -203,7 +306,7 @@
         </main>
 
         <footer class="footer">
-            <p>Weather data by <a href="https://open-meteo.com/" target="_blank" rel="noopener noreferrer">Open-Meteo</a> · Location search data by GeoNames</p>
+            <p>Weather data by <a href="https://open-meteo.com/" target="_blank" rel="noopener noreferrer">Open-Meteo</a> · Locations by GeoNames · Maps by <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a></p>
             <p>Weather data is provided under <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a>.</p>
         </footer>
     </div>
@@ -215,6 +318,16 @@
             const status = document.getElementById("location-status");
             const selectedBox = document.getElementById("selected-location");
             const selectedLabel = document.getElementById("selected-label");
+            const mapWrap = document.getElementById("area-map-wrap");
+            const mapFrame = document.getElementById("area-map");
+            const mapLink = document.getElementById("area-map-link");
+            const saveButton = document.getElementById("save-area-button");
+            const removeButton = document.getElementById("remove-area-button");
+            const savedPicker = document.getElementById("saved-area-picker");
+            const comparePicker = document.getElementById("compare-location");
+            const favoriteStatus = document.getElementById("favorite-status");
+            const startDate = document.getElementById("date");
+            const endDate = document.getElementById("end-date");
             const form = document.getElementById("weather-form");
             const fields = {
                 name: document.getElementById("location-name"),
@@ -225,22 +338,49 @@
             };
             let searchTimer;
             let requestController;
+            let selectedSavedId = "";
 
             const clearSelection = () => {
                 Object.values(fields).forEach((field) => { field.value = ""; });
                 selectedBox.hidden = true;
+                mapWrap.hidden = true;
+                saveButton.disabled = true;
+                selectedSavedId = "";
+                removeButton.disabled = true;
+                savedPicker.value = "";
             };
 
-            const chooseLocation = (place) => {
+            const showMap = (place) => {
+                const lat = Number(place.latitude);
+                const lon = Number(place.longitude);
+                if (!Number.isFinite(lat) || !Number.isFinite(lon)) return;
+                const south = Math.max(-85, lat - 0.18);
+                const north = Math.min(85, lat + 0.18);
+                const west = Math.max(-180, lon - 0.22);
+                const east = Math.min(180, lon + 0.22);
+                const marker = `${lat.toFixed(4)},${lon.toFixed(4)}`;
+                const mapUrl = `https://www.openstreetmap.org/export/embed.html?bbox=${west},${south},${east},${north}&layer=mapnik&marker=${marker}`;
+                mapFrame.src = mapUrl;
+                mapLink.href = `https://www.openstreetmap.org/?mlat=${lat}&mlon=${lon}#map=10/${lat}/${lon}`;
+                mapWrap.hidden = false;
+            };
+
+            const chooseLocation = (place, savedId = "") => {
                 fields.name.value = place.name || "";
                 fields.region.value = place.region || "";
                 fields.country.value = place.country || "";
                 fields.latitude.value = place.latitude;
                 fields.longitude.value = place.longitude;
                 selectedLabel.textContent = [place.name, place.region, place.country].filter(Boolean).join(", ");
+                queryInput.value = place.name || "";
                 selectedBox.hidden = false;
                 resultsBox.replaceChildren();
-                status.textContent = "Area selected. You can create your report.";
+                saveButton.disabled = false;
+                selectedSavedId = savedId;
+                removeButton.disabled = !savedId;
+                if (savedId) savedPicker.value = savedId;
+                status.textContent = "Area selected. The marker is a representative point, not an address.";
+                showMap(place);
             };
 
             const renderResults = (places) => {
@@ -259,6 +399,18 @@
                     option.append(main, detail);
                     option.addEventListener("click", () => chooseLocation(place));
                     resultsBox.append(option);
+                });
+            };
+
+            const addFavoriteOption = (location) => {
+                const label = [location.name, location.region, location.country].filter(Boolean).join(", ");
+                [savedPicker, comparePicker].forEach((select) => {
+                    if ([...select.options].some((option) => option.value === location.id)) return;
+                    const option = document.createElement("option");
+                    option.value = location.id;
+                    option.textContent = label;
+                    if (select === savedPicker) option.dataset.location = JSON.stringify(location);
+                    select.append(option);
                 });
             };
 
@@ -287,16 +439,100 @@
                 }, 250);
             });
 
+            savedPicker.addEventListener("change", () => {
+                const option = savedPicker.selectedOptions[0];
+                if (!option || !option.value) {
+                    removeButton.disabled = true;
+                    return;
+                }
+                try {
+                    chooseLocation(JSON.parse(option.dataset.location), option.value);
+                } catch {
+                    status.textContent = "Could not load that saved area.";
+                }
+            });
+
+            saveButton.addEventListener("click", async () => {
+                if (!fields.name.value) return;
+                favoriteStatus.textContent = "Saving area…";
+                try {
+                    const response = await fetch("/favorites", {
+                        method: "POST",
+                        headers: {"Content-Type": "application/json"},
+                        body: JSON.stringify({
+                            name: fields.name.value,
+                            region: fields.region.value,
+                            country: fields.country.value,
+                            latitude: fields.latitude.value,
+                            longitude: fields.longitude.value
+                        })
+                    });
+                    const data = await response.json();
+                    if (!response.ok) throw new Error(data.error || "Could not save this area.");
+                    addFavoriteOption(data.location);
+                    savedPicker.value = data.location.id;
+                    selectedSavedId = data.location.id;
+                    removeButton.disabled = false;
+                    favoriteStatus.textContent = "Area saved.";
+                } catch (error) {
+                    favoriteStatus.textContent = error.message || "Could not save this area.";
+                }
+            });
+
+            removeButton.addEventListener("click", async () => {
+                if (!selectedSavedId) return;
+                try {
+                    const response = await fetch(`/favorites/${encodeURIComponent(selectedSavedId)}`, {method: "DELETE"});
+                    const data = await response.json();
+                    if (!response.ok) throw new Error(data.error || "Could not remove this area.");
+                    [savedPicker, comparePicker].forEach((select) => {
+                        [...select.options].forEach((option) => {
+                            if (option.value === selectedSavedId) option.remove();
+                        });
+                    });
+                    comparePicker.value = "";
+                    favoriteStatus.textContent = "Saved area removed.";
+                    clearSelection();
+                } catch (error) {
+                    favoriteStatus.textContent = error.message || "Could not remove this area.";
+                }
+            });
+
             document.getElementById("change-location").addEventListener("click", () => {
                 clearSelection();
                 queryInput.focus();
             });
+
+            const updateDateRange = () => {
+                endDate.min = startDate.value || "1940-01-01";
+                if (!startDate.value) return;
+                const start = new Date(`${startDate.value}T12:00:00`);
+                start.setDate(start.getDate() + 30);
+                endDate.max = `${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, "0")}-${String(start.getDate()).padStart(2, "0")}`;
+                const rangeMode = Boolean(endDate.value);
+                comparePicker.disabled = rangeMode;
+                if (rangeMode) comparePicker.value = "";
+            };
+            startDate.addEventListener("change", updateDateRange);
+            endDate.addEventListener("change", updateDateRange);
+            updateDateRange();
 
             form.addEventListener("submit", (event) => {
                 if (!fields.name.value || !fields.latitude.value || !fields.longitude.value) {
                     event.preventDefault();
                     status.textContent = "Search for and select a city or region before continuing.";
                     queryInput.focus();
+                    return;
+                }
+                if (endDate.value && endDate.value < startDate.value) {
+                    event.preventDefault();
+                    status.textContent = "The end date must be the same day or after the start date.";
+                    endDate.focus();
+                    return;
+                }
+                if (endDate.value && comparePicker.value) {
+                    event.preventDefault();
+                    favoriteStatus.textContent = "Choose either a date range or a single-day area comparison.";
                 }
             });
         })();
