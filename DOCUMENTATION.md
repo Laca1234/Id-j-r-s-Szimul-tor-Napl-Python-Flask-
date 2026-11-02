@@ -9,9 +9,9 @@ The application is a Flask weather lookup and journal. It uses external weather 
 | File | Responsibility |
 |---|---|
 | `app.py` | Flask routes, request validation, messages, page rendering |
-| `engine.py` | Open-Meteo geocoding and weather retrieval; forecast and climate report calculations |
-| `service.py` | Read and atomically save reports in the local JSON log |
-| `templates/index.html` | Date and area selection, latest report, history table |
+| `engine.py` | Open-Meteo geocoding and weather retrieval; forecast and climate calculations; response cache |
+| `service.py` | Atomic JSON persistence for reports and favorite areas |
+| `templates/index.html` | Date range and area selection, map preview, comparisons, timelines, and history |
 | `static/style.css` | Responsive interface styling |
 
 ### Routes
@@ -21,6 +21,8 @@ The application is a Flask weather lookup and journal. It uses external weather 
 | `/` | GET | Dashboard, latest report, and saved history |
 | `/locations?q=...` | GET | Search approximate city/administrative-area matches via Open-Meteo geocoding |
 | `/generate` | POST | Retrieve the appropriate data for the selected date and location, save it, and return to the dashboard |
+| `/favorites` | GET, POST | List saved areas or add the selected area to favorites |
+| `/favorites/<id>` | DELETE | Remove one saved area |
 
 ## Date and data handling
 
@@ -31,6 +33,8 @@ For dates before today, the app requests daily data from Open-Meteo's Historical
 ### Near-term dates
 
 Today through 15 days ahead use the Forecast API with a 16-day response. The report uses the daily forecast's temperature range, apparent-temperature range, precipitation probability and total, maximum wind speed, and WMO weather code.
+
+Each forecast also gets a lead-time guide: higher for days 0–2, moderate for days 3–6, and lower from day 7 onward. These are descriptive guidance labels, not provider-issued probability scores. Forecast mean temperature is compared with a 10-year same-season sample; the report shows the temperature difference, typical range, and historical precipitation likelihood when that comparison data is available.
 
 ### Far-future dates
 
@@ -45,9 +49,19 @@ Dates beyond the forecast window use historical ERA5 data from the previous ten 
 
 The sample size and calculation window are shown with each report. This is a climate outlook, not a specific forecast for the selected day. A climate outlook is used when an operational forecast is unavailable so the app does not invent extreme values.
 
+### Date ranges
+
+Users can request up to 31 consecutive days. Historical dates are fetched as one archive range, near-term dates use one forecast request, and long-range dates use batched historical windows. Each daily report is saved with a range-group identifier. The dashboard renders the saved group as a temperature-range timeline.
+
 ### Approximate areas
 
 Users search for a city or administrative area and select a geocoding result. The app stores its representative latitude/longitude, region, and country. It does not ask for an address. The same approximate coordinate is used for both archive and forecast lookups.
+
+The selected place can be saved as a favorite. Saved areas live in `.saved_locations.json`, which is excluded from Git. For a single-day lookup, a second saved area can be selected for side-by-side comparison. An OpenStreetMap preview shows the representative point and an approximate surrounding area.
+
+### Cache and offline fallback
+
+Provider JSON responses are cached in `.weather_cache.json`, excluded from Git. Geocoding results are cached for 30 days, forecasts for 15 minutes, and archive responses for one day. If a live request fails, the engine serves matching cached data and adds a visible note with its approximate age. Cache writes use an atomic replace.
 
 ## Stored report shape
 
@@ -66,6 +80,9 @@ Users search for a city or administrative area and select a geocoding result. Th
   "temperature": 0.0,
   "temperature_min": 0.0,
   "temperature_max": 0.0,
+  "normal_temperature": 0.0,
+  "temperature_vs_normal": 0.0,
+  "confidence_label": "Higher | Moderate | Lower",
   "precipitation_probability": 0,
   "precipitation_sum": 0.0,
   "wind_speed": 0.0,
@@ -77,6 +94,8 @@ Users search for a city or administrative area and select a geocoding result. Th
 
 The reader tolerates older simulator records so existing JSON history remains visible. New JSON writes use a temporary file and atomic replace.
 
+Reports created by a date-range request also carry a shared `range_group`; reports created by a same-day area comparison carry a shared `comparison_group`. These identifiers let the dashboard reconstruct the latest timeline or comparison from the report log.
+
 ## Run locally
 
 Requires Python 3.10+ and Flask:
@@ -86,7 +105,7 @@ python -m pip install Flask
 python app.py
 ```
 
-Open <http://127.0.0.1:5000>. A network connection is required for geocoding and weather data. The local Flask development server is intended for development, not public deployment. Set `FLASK_SECRET_KEY` to a private value before using the app beyond local development.
+Open <http://127.0.0.1:5000>. A network connection is required for new geocoding and weather data; cached results can be used during outages. The local Flask development server is intended for development, not public deployment. Set `FLASK_SECRET_KEY` to a private value before using the app beyond local development.
 
 ## Data attribution and terms
 
