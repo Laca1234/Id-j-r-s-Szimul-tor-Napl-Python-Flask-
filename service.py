@@ -1,32 +1,31 @@
+"""Local JSON persistence for requested weather reports."""
+
 import json
 import os
+from pathlib import Path
 
-LOG_FILE = "weather_log.json"
+
+LOG_FILE = Path(__file__).with_name("weather_log.json")
 
 
 class WeatherService:
+    @staticmethod
+    def save_record(record):
+        data = WeatherService.get_all_records()
+        data.append(record)
+        temporary_file = LOG_FILE.with_suffix(".json.tmp")
+        with temporary_file.open("w", encoding="utf-8") as file:
+            json.dump(data, file, ensure_ascii=False, indent=2)
+        os.replace(temporary_file, LOG_FILE)
+        return record
 
-  @staticmethod
-  def save_record(record):
-    data = []
-    if os.path.exists(LOG_FILE):
-      try:
-        with open(LOG_FILE, "r", encoding="utf-8") as f:
-          data = json.load(f)
-      except json.JSONDecodeError:
-        data = []
-
-    data.append(record)
-
-    with open(LOG_FILE, "w", encoding="utf-8") as f:
-      json.dump(data, f, ensure_ascii=False, indent=4)
-
-  @staticmethod
-  def get_all_records():
-    if not os.path.exists(LOG_FILE):
-      return []
-    try:
-      with open(LOG_FILE, "r", encoding="utf-8") as f:
-        return json.load(f)
-    except json.JSONDecodeError:
-      return []
+    @staticmethod
+    def get_all_records():
+        if not LOG_FILE.exists():
+            return []
+        try:
+            with LOG_FILE.open("r", encoding="utf-8") as file:
+                records = json.load(file)
+            return records if isinstance(records, list) else []
+        except (OSError, json.JSONDecodeError):
+            return []

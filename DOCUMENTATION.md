@@ -1,260 +1,93 @@
+# Weather Journal — Technical Documentation
 
+## Overview
 
-# Időjárás Szimulátor & Napló — Technical Documentation
+The application is a Flask weather lookup and journal. It uses external weather data rather than generating random seasonal values. A requested day is classified as historical, within forecast range, or beyond the forecast horizon and routed to an appropriate data source.
 
-## 1. Project Overview
+## Architecture
 
-The Weather Simulator & Journal is an educational web application built with Python and Flask.
-
-It demonstrates a layered, MVC-style architecture by separating HTTP request handling, weather generation logic, and persistent data storage.
-
-The application does not use an external weather API. Instead, it generates simulated weather records using randomized, season-based rules and stores the generated data in a local JSON file.
-
-The user can generate new weather reports and review previously generated records through a browser interface.
-
-## 2. Technology Stack
-
-| Technology | Purpose |
+| File | Responsibility |
 |---|---|
-| Python | Application logic |
-| Flask | Web framework and routing |
-| HTML5 | Page structure |
-| CSS3 | Interface styling |
-| Jinja2 | Dynamic HTML rendering |
-| JSON | Persistent local data storage |
+| `app.py` | Flask routes, request validation, messages, page rendering |
+| `engine.py` | Open-Meteo geocoding and weather retrieval; forecast and climate report calculations |
+| `service.py` | Read and atomically save reports in the local JSON log |
+| `templates/index.html` | Date and area selection, latest report, history table |
+| `static/style.css` | Responsive interface styling |
 
-## 3. Architecture
+### Routes
 
-The application separates its responsibilities into three main layers.
-
-### Controller — `app.py`
-
-The Flask application handles incoming HTTP requests and connects the presentation layer with the application logic.
-
-Available routes:
-
-| Route | Method | Function |
+| Route | Method | Description |
 |---|---|---|
-| `/` | GET | Displays the dashboard and weather history. |
-| `/generate` | POST | Generates and saves a new weather record. |
+| `/` | GET | Dashboard, latest report, and saved history |
+| `/locations?q=...` | GET | Search approximate city/administrative-area matches via Open-Meteo geocoding |
+| `/generate` | POST | Retrieve the appropriate data for the selected date and location, save it, and return to the dashboard |
 
-The homepage retrieves stored records, calculates the average temperature, and identifies the latest generated report.
+## Date and data handling
 
-### Engine — `engine.py`
+### Historical dates
 
-The `WeatherEngine` class is responsible for generating simulated weather data.
+For dates before today, the app requests daily data from Open-Meteo's Historical Weather API, using ERA5. Available fields include daily mean/minimum/maximum temperature, apparent temperature, precipitation total, maximum wind speed, and a WMO weather code. The report identifies these as historical weather reanalysis, since reanalysis is reconstructed gridded weather data rather than a station observation. ERA5 archive data can be delayed by several days; if a date in the last five days is not yet in the archive, the app tries the Forecast API's recent past-days data and labels it separately. The supported date range starts in 1940.
 
-Its main method is:
+### Near-term dates
 
-```python
-WeatherEngine.generate_weather_data()
-```
+Today through 15 days ahead use the Forecast API with a 16-day response. The report uses the daily forecast's temperature range, apparent-temperature range, precipitation probability and total, maximum wind speed, and WMO weather code.
 
-The method generates the following information:
+### Far-future dates
 
-- Timestamp.
-- Season.
-- Temperature.
-- Feels-like temperature.
-- Weather condition.
-- Humidity.
-- Wind speed.
+Dates beyond the forecast window use historical ERA5 data from the previous ten complete calendar years. The sample contains observations within ±7 calendar days of the selected month/day. The report presents:
 
-### Service — `service.py`
+- Median daily mean temperature.
+- 10th–90th percentile range for daily mean temperature.
+- Median daily low and high temperatures.
+- The most frequent WMO condition code.
+- The share of sampled days with at least 0.1 mm precipitation.
+- Median precipitation and peak wind speed.
 
-The `WeatherService` class handles persistent data storage.
+The sample size and calculation window are shown with each report. This is a climate outlook, not a specific forecast for the selected day. A climate outlook is used when an operational forecast is unavailable so the app does not invent extreme values.
 
-Its main methods are:
+### Approximate areas
 
-```python
-WeatherService.save_record(record)
-WeatherService.get_all_records()
-```
+Users search for a city or administrative area and select a geocoding result. The app stores its representative latitude/longitude, region, and country. It does not ask for an address. The same approximate coordinate is used for both archive and forecast lookups.
 
-The service reads and writes weather records to a local JSON file named `weather_log.json`.
+## Stored report shape
 
-If the file does not exist, the application starts with an empty history.
-
-If the stored JSON is invalid, the service falls back to an empty dataset.
-
-### Presentation — `templates/` and `static/`
-
-The presentation layer contains:
-
-- `templates/index.html` — dynamic dashboard template.
-- `static/style.css` — visual styling.
-
-The HTML template uses Jinja2 to display the latest weather report, statistics, and historical records.
-
-## 4. Weather Generation Logic
-
-Weather data is generated locally using Python's `random` module.
-
-The application randomly selects one of four seasons.
-
-| Season | Temperature Range |
-|---|---|
-| Spring (`Tavasz`) | 10–22 °C |
-| Summer (`Nyár`) | 22–38 °C |
-| Autumn (`Ősz`) | 5–18 °C |
-| Winter (`Tél`) | -10–5 °C |
-
-The selected season determines the available weather conditions.
-
-Humidity is generated between 30% and 95%.
-
-Wind speed is generated between 0 and 45 km/h.
-
-## 5. Feels-Like Temperature Calculation
-
-The application calculates a simplified comfort temperature using the generated temperature, humidity, and wind speed.
-
-The implemented rules are:
-
-**Hot and humid conditions:**
-
-If temperature is above 25 °C and humidity is above 60%:
-
-```python
-feels_like = round(temp + (humidity / 10), 1)
-```
-
-**Cold and windy conditions:**
-
-If temperature is below 10 °C and wind speed is above 10 km/h:
-
-```python
-feels_like = round(temp - (wind_speed / 5), 1)
-```
-
-**Other conditions:**
-
-The feels-like temperature remains equal to the generated temperature.
-
-These calculations are simplified educational rules, not a meteorological forecasting model.
-
-## 6. Data Storage
-
-Weather records are stored in:
-
-```text
-weather_log.json
-```
-
-Each record contains the generated weather information.
-
-Example structure:
+`weather_log.json` contains a JSON array. New reports include:
 
 ```json
 {
-    "timestamp": "2026-01-01 12:30:00",
-    "season": "Tavasz",
-    "temperature": 18.5,
-    "feels_like": 18.5,
-    "condition": "Napos",
-    "humidity": 55,
-    "wind_speed": 8.2
+  "date": "YYYY-MM-DD",
+  "generated_at": "ISO-8601 timestamp",
+  "location": "Place, Region, Country",
+  "latitude": 0.0,
+  "longitude": 0.0,
+  "scenario_type": "historical | forecast | climate_outlook",
+  "source": "Open-Meteo",
+  "source_url": "provider documentation link",
+  "temperature": 0.0,
+  "temperature_min": 0.0,
+  "temperature_max": 0.0,
+  "precipitation_probability": 0,
+  "precipitation_sum": 0.0,
+  "wind_speed": 0.0,
+  "condition": "Partly cloudy",
+  "data_basis": "Weather data basis",
+  "data_note": "How this report should be interpreted"
 }
 ```
 
-The example illustrates the data structure; actual values are generated randomly.
+The reader tolerates older simulator records so existing JSON history remains visible. New JSON writes use a temporary file and atomic replace.
 
-The JSON file is created automatically when the first record is saved.
+## Run locally
 
-## 7. Web Interface
-
-The dashboard provides three main areas.
-
-### Generate Weather
-
-A button submits a POST request to `/generate`.
-
-The application generates a new report, saves it, and redirects the user to the homepage.
-
-### Current Report
-
-Displays the latest available weather record, including:
-
-- Date and time.
-- Season.
-- Weather condition.
-- Temperature.
-- Feels-like temperature.
-- Humidity.
-- Wind speed.
-
-### Statistics and History
-
-The dashboard displays:
-
-- Total number of generated records.
-- Average temperature across stored records.
-- Historical weather reports in a table.
-
-The history is displayed in reverse order so that the newest records appear first.
-
-## 8. Installation
-
-### Requirements
-
-- Python 3.10 or newer.
-- pip.
-
-Clone the repository:
+Requires Python 3.10+ and Flask:
 
 ```bash
-git clone https://github.com/Laca1234/Id-j-r-s-Szimul-tor-Napl-Python-Flask-.git
-cd Id-j-r-s-Szimul-tor-Napl-Python-Flask-
-```
-
-Install Flask:
-
-```bash
-pip install Flask
-```
-
-## 9. Running the Application
-
-Start the Flask server:
-
-```bash
+python -m pip install Flask
 python app.py
 ```
 
-Open the application in a browser:
+Open <http://127.0.0.1:5000>. A network connection is required for geocoding and weather data. The local Flask development server is intended for development, not public deployment. Set `FLASK_SECRET_KEY` to a private value before using the app beyond local development.
 
-```text
-http://127.0.0.1:5000
-```
+## Data attribution and terms
 
-The application currently starts Flask with debug mode enabled, which is suitable for local development but should be disabled in a production deployment.
-
-## 10. Project Structure
-
-```text
-weather-simulator/
-├── app.py
-├── engine.py
-├── service.py
-├── weather_log.json
-├── templates/
-│   └── index.html
-└── static/
-    └── style.css
-```
-
-`weather_log.json` is generated at runtime and may not exist in a fresh checkout.
-
-## 11. Limitations
-
-- Weather data is simulated rather than retrieved from real measurements.
-- No external weather API is used.
-- The generation logic is randomized.
-- The feels-like calculation is simplified.
-- JSON storage is intended for a small local application rather than concurrent production workloads.
-- The development server is not intended for public production deployment.
-
-## 12. Project Scope
-
-The project demonstrates separation of concerns in a small Flask application, including routing, business logic, local persistence, and dynamic server-rendered HTML.
-
+The interface credits [Open-Meteo](https://open-meteo.com/) and GeoNames. Open-Meteo weather data is provided under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). Its free API is for non-commercial use; check [Open-Meteo's terms](https://open-meteo.com/en/terms) before commercial deployment.
