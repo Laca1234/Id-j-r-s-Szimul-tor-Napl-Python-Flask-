@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+    <meta charset="UTF-8">
+    <title>Időjárás Szimulátor</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🌤️ Időjárás Szimulátor & Napló</h1>
+            <p>Tiszta rétegzett architektúra Pythonban (MVC stílus)</p>
+        </header>
+
+        <section class="action-section">
+            <form action="/generate" method="POST">
+                <button type="submit" class="btn-generate">🎲 Új időjárás generálása</button>
+            </form>
+        </section>
+
+        {% if latest %}
+        <section class="card latest-card">
+            <h2>Aktuális jelentés</h2>
+            <div class="weather-info">
+                <div class="info-item"><span>Dátum:</span> <strong>{{ latest.timestamp }}</strong></div>
+                <div class="info-item"><span>Évszak:</span> <strong>{{ latest.season }}</strong></div>
+                <div class="info-item"><span>Állapot:</span> <strong>{{ latest.condition }}</strong></div>
+                <div class="info-item"><span>Hőmérséklet:</span> <strong class="temp">{{ latest.temperature }} °C</strong></div>
+                <div class="info-item"><span>Hőérzet:</span> <strong>{{ latest.feels_like }} °C</strong></div>
+                <div class="info-item"><span>Páratartalom:</span> <strong>{{ latest.humidity }}%</strong></div>
+                <div class="info-item"><span>Szélsebesség:</span> <strong>{{ latest.wind_speed }} km/h</strong></div>
+            </div>
+        </section>
+        {% endif %}
+
+        <section class="stats-section">
+            <div class="stat-box">
+                <h3>Összes mérés</h3>
+                <p>{{ records|length }} db</p>
+            </div>
+            <div class="stat-box">
+                <h3>Átlaghőmérséklet</h3>
+                <p>{{ avg_temp }} °C</p>
+            </div>
+        </section>
+
+        <section class="history-section">
+            <h2>Múltbeli napló</h2>
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Dátum</th>
+                            <th>Évszak</th>
+                            <th>Állapot</th>
+                            <th>Temp</th>
+                            <th>Hőérzet</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for r in records|reverse %}
+                        <tr>
+                            <td>{{ r.timestamp }}</td>
+                            <td>{{ r.season }}</td>
+                            <td>{{ r.condition }}</td>
+                            <td>{{ r.temperature }} °C</td>
+                            <td>{{ r.feels_like }} °C</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </div>
+</body>
+</html>
