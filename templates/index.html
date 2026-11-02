@@ -1,76 +1,305 @@
-<!DOCTYPE html>
-<html lang="hu">
+<!doctype html>
+<html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>Időjárás Szimulátor</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#0d1824">
+    <title>Weather Journal</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
-    <div class="container">
-        <header>
-            <h1>🌤️ Időjárás Szimulátor & Napló</h1>
-            <p>Tiszta rétegzett architektúra Pythonban (MVC stílus)</p>
+    <div class="page-shell">
+        <header class="topbar">
+            <a class="brand" href="{{ url_for('index') }}" aria-label="Weather Journal home">
+                <span class="brand-mark" aria-hidden="true">W</span>
+                <span>Weather Journal</span>
+            </a>
+            <span class="topbar-note"><span class="live-dot"></span> Data-backed reports</span>
         </header>
 
-        <section class="action-section">
-            <form action="/generate" method="POST">
-                <button type="submit" class="btn-generate">🎲 Új időjárás generálása</button>
-            </form>
-        </section>
+        <main>
+            <section class="intro">
+                <p class="eyebrow">A clearer view of the weather</p>
+                <h1>Look up a day.<br><span>Know what to expect.</span></h1>
+                <p class="intro-copy">Choose a date and an area to get historical weather, a live forecast, or a longer-range climate outlook.</p>
+            </section>
 
-        {% if latest %}
-        <section class="card latest-card">
-            <h2>Aktuális jelentés</h2>
-            <div class="weather-info">
-                <div class="info-item"><span>Dátum:</span> <strong>{{ latest.timestamp }}</strong></div>
-                <div class="info-item"><span>Évszak:</span> <strong>{{ latest.season }}</strong></div>
-                <div class="info-item"><span>Állapot:</span> <strong>{{ latest.condition }}</strong></div>
-                <div class="info-item"><span>Hőmérséklet:</span> <strong class="temp">{{ latest.temperature }} °C</strong></div>
-                <div class="info-item"><span>Hőérzet:</span> <strong>{{ latest.feels_like }} °C</strong></div>
-                <div class="info-item"><span>Páratartalom:</span> <strong>{{ latest.humidity }}%</strong></div>
-                <div class="info-item"><span>Szélsebesség:</span> <strong>{{ latest.wind_speed }} km/h</strong></div>
-            </div>
-        </section>
-        {% endif %}
+            {% for category, message in messages %}
+            <div class="notice notice-{{ category }}" role="status">{{ message }}</div>
+            {% endfor %}
 
-        <section class="stats-section">
-            <div class="stat-box">
-                <h3>Összes mérés</h3>
-                <p>{{ records|length }} db</p>
-            </div>
-            <div class="stat-box">
-                <h3>Átlaghőmérséklet</h3>
-                <p>{{ avg_temp }} °C</p>
-            </div>
-        </section>
+            <section class="lookup-card" aria-labelledby="lookup-title">
+                <div class="section-heading">
+                    <div>
+                        <p class="eyebrow">Weather lookup</p>
+                        <h2 id="lookup-title">Build a report</h2>
+                    </div>
+                    <span class="step-tag">01 <span>·</span> Choose date &amp; area</span>
+                </div>
 
-        <section class="history-section">
-            <h2>Múltbeli napló</h2>
-            <div class="table-wrapper">
-                <table>
-                    <thead>
+                <form action="{{ url_for('generate') }}" method="post" id="weather-form">
+                    <div class="form-grid">
+                        <div class="field date-field">
+                            <label for="date">Date</label>
+                            <div class="input-wrap date-wrap">
+                                <span class="input-icon" aria-hidden="true">▦</span>
+                                <input id="date" name="date" type="date" value="{{ today }}" min="1940-01-01" required>
+                            </div>
+                            <p class="field-help">Any date from 1940 onward, past or future.</p>
+                        </div>
+
+                        <div class="field location-field">
+                            <label for="location-query">Area</label>
+                            <div class="input-wrap">
+                                <span class="input-icon" aria-hidden="true">⌖</span>
+                                <input id="location-query" type="search" autocomplete="off" placeholder="Search a city or region" aria-describedby="location-help location-status">
+                            </div>
+                            <p id="location-help" class="field-help">Pick a nearby city or region; no street address is used.</p>
+                            <div id="location-status" class="location-status" aria-live="polite"></div>
+                            <div id="location-results" class="location-results" role="listbox" aria-label="Matching areas"></div>
+                            <div id="selected-location" class="selected-location" hidden>
+                                <span class="selected-check" aria-hidden="true">✓</span>
+                                <span id="selected-label"></span>
+                                <button type="button" id="change-location" class="change-location">Change</button>
+                            </div>
+                            <input type="hidden" name="location_name" id="location-name">
+                            <input type="hidden" name="location_region" id="location-region">
+                            <input type="hidden" name="location_country" id="location-country">
+                            <input type="hidden" name="latitude" id="latitude">
+                            <input type="hidden" name="longitude" id="longitude">
+                        </div>
+                    </div>
+
+                    <div class="form-footer">
+                        <p><span class="lock-icon" aria-hidden="true">◌</span> Approximate area data. Your exact address is never requested.</p>
+                        <button type="submit" class="primary-button">
+                            <span>Get weather report</span>
+                            <span class="button-arrow" aria-hidden="true">↗</span>
+                        </button>
+                    </div>
+                </form>
+            </section>
+
+            <section class="method-strip" aria-label="How reports are built">
+                <article class="method-item">
+                    <span class="method-icon past-icon" aria-hidden="true">↶</span>
+                    <div><h3>Past dates</h3><p>Historical weather reanalysis</p></div>
+                </article>
+                <article class="method-item">
+                    <span class="method-icon forecast-icon" aria-hidden="true">☀</span>
+                    <div><h3>Up to 15 days ahead</h3><p>Current multi-model forecast</p></div>
+                </article>
+                <article class="method-item">
+                    <span class="method-icon outlook-icon" aria-hidden="true">▤</span>
+                    <div><h3>Further ahead</h3><p>10-year climate outlook</p></div>
+                </article>
+            </section>
+
+            {% if latest %}
+            <section class="report-card" aria-labelledby="report-title">
+                <div class="report-topline">
+                    <div>
+                        <p class="eyebrow">Your latest lookup <span class="report-date">· {{ latest.get('date', latest.get('timestamp', '')) }}</span></p>
+                        <h2 id="report-title">{{ latest.get('location', 'Selected area') }}</h2>
+                        <p class="report-place">{{ latest.get('region', '') }}{% if latest.get('region') and latest.get('country') %}, {% endif %}{{ latest.get('country', '') }}</p>
+                    </div>
+                    {% set scenario_type = latest.get('scenario_type') or 'legacy' %}
+                    <span class="report-badge badge-{{ scenario_type }}">
+                        {% if scenario_type == 'forecast' %}Forecast{% elif scenario_type == 'climate_outlook' %}Climate outlook{% elif scenario_type == 'historical' %}Historical{% elif scenario_type == 'legacy' %}Legacy sample{% else %}{{ scenario_type }}{% endif %}
+                    </span>
+                </div>
+
+                <div class="report-summary">
+                    <div class="condition-block">
+                        <span class="condition-spark" aria-hidden="true">✳</span>
+                        <div>
+                            <h3>{{ latest.get('condition', 'Conditions unavailable') }}</h3>
+                            <p>{{ latest.get('season', '') }} conditions around {{ latest.get('date', latest.get('timestamp', '')) }}</p>
+                        </div>
+                    </div>
+                    <div class="temperature-block">
+                        <span class="temperature-value">{{ latest.get('temperature', '—') }}<sup>°C</sup></span>
+                        {% if latest.get('temperature_min') is not none and latest.get('temperature_max') is not none %}
+                        <span class="temperature-range">{{ latest.get('temperature_min')|round(0)|int }}° <span>to</span> {{ latest.get('temperature_max')|round(0)|int }}°</span>
+                        {% endif %}
+                    </div>
+                </div>
+
+                {% if latest.get('scenario_type') == 'climate_outlook' and latest.get('temperature_range_low') is not none %}
+                <div class="range-note">Typical daily mean range: <strong>{{ latest.get('temperature_range_low') }}° to {{ latest.get('temperature_range_high') }}°C</strong></div>
+                {% endif %}
+
+                <div class="metric-grid">
+                    <div class="metric">
+                        <span class="metric-icon rain-icon" aria-hidden="true">◒</span>
+                        <div><span class="metric-label">Chance of precipitation</span>
+                            <strong>{% if latest.get('precipitation_probability') is not none %}{{ latest.get('precipitation_probability')|round|int }}%{% else %}—{% endif %}</strong>
+                        </div>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-icon drop-icon" aria-hidden="true">↓</span>
+                        <div><span class="metric-label">Precipitation</span>
+                            <strong>{% if latest.get('precipitation_sum') is not none %}{{ latest.get('precipitation_sum')|round(1) }} mm{% else %}—{% endif %}</strong>
+                        </div>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-icon wind-icon" aria-hidden="true">↗</span>
+                        <div><span class="metric-label">Peak wind</span>
+                            <strong>{% if latest.get('wind_speed') is not none %}{{ latest.get('wind_speed')|round(0)|int }} km/h{% else %}—{% endif %}</strong>
+                        </div>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-icon feels-icon" aria-hidden="true">≈</span>
+                        <div><span class="metric-label">Feels like</span>
+                            <strong>{% if latest.get('feels_like_min') is not none and latest.get('feels_like_max') is not none %}{{ latest.get('feels_like_min')|round(0)|int }}°–{{ latest.get('feels_like_max')|round(0)|int }}°C{% else %}—{% endif %}</strong>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="source-note">
+                    <div class="source-copy">
+                        <span class="source-dot" aria-hidden="true"></span>
+                        <p><strong>{{ latest.get('data_basis') or 'Legacy simulator sample' }}</strong><span>{{ latest.get('data_note') or 'This older report was randomly generated by the original simulator; it is not a weather observation.' }}</span></p>
+                    </div>
+                    {% if latest.get('sample_count') %}<span class="sample-count">{{ latest.get('sample_count') }} sample days</span>{% endif %}
+                    {% if latest.get('source_url') %}<a href="{{ latest.get('source_url') }}" target="_blank" rel="noopener noreferrer">Data source ↗</a>{% endif %}
+                </div>
+            </section>
+            {% endif %}
+
+            <section class="history-section">
+                <div class="section-heading history-heading">
+                    <div><p class="eyebrow">Your saved lookups</p><h2>Report history</h2></div>
+                    <div class="history-stats">
+                        <div><span>Reports</span><strong>{{ records|length }}</strong></div>
+                        <div><span>Average temperature</span><strong>{% if average_temperature is not none %}{{ average_temperature }}°C{% else %}—{% endif %}</strong></div>
+                    </div>
+                </div>
+                {% if records %}
+                <div class="table-wrap">
+                    <table>
+                        <thead><tr><th>Date</th><th>Area</th><th>Type</th><th>Conditions</th><th>Temperature</th><th>Rain chance</th></tr></thead>
+                        <tbody>
+                        {% for record in records|reverse %}
                         <tr>
-                            <th>Dátum</th>
-                            <th>Évszak</th>
-                            <th>Állapot</th>
-                            <th>Temp</th>
-                            <th>Hőérzet</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for r in records|reverse %}
-                        <tr>
-                            <td>{{ r.timestamp }}</td>
-                            <td>{{ r.season }}</td>
-                            <td>{{ r.condition }}</td>
-                            <td>{{ r.temperature }} °C</td>
-                            <td>{{ r.feels_like }} °C</td>
+                            <td>{{ record.get('date', record.get('timestamp', '—')) }}</td>
+                            <td>{{ record.get('location', '—') }}</td>
+                            <td><span class="table-type">{{ record.get('data_basis') or ('Legacy simulator sample' if not record.get('scenario_type') else 'Report') }}</span></td>
+                            <td>{{ record.get('condition', '—') }}</td>
+                            <td>{% if record.get('temperature') is not none %}{{ record.get('temperature') }}°C{% else %}—{% endif %}</td>
+                            <td>{% if record.get('precipitation_probability') is not none %}{{ record.get('precipitation_probability')|round|int }}%{% else %}—{% endif %}</td>
                         </tr>
                         {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        </section>
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="empty-state"><span aria-hidden="true">☼</span><p>No reports yet. Choose a date and area above to create your first one.</p></div>
+                {% endif %}
+            </section>
+        </main>
+
+        <footer class="footer">
+            <p>Weather data by <a href="https://open-meteo.com/" target="_blank" rel="noopener noreferrer">Open-Meteo</a> · Location search data by GeoNames</p>
+            <p>Weather data is provided under <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a>.</p>
+        </footer>
     </div>
+
+    <script>
+        (() => {
+            const queryInput = document.getElementById("location-query");
+            const resultsBox = document.getElementById("location-results");
+            const status = document.getElementById("location-status");
+            const selectedBox = document.getElementById("selected-location");
+            const selectedLabel = document.getElementById("selected-label");
+            const form = document.getElementById("weather-form");
+            const fields = {
+                name: document.getElementById("location-name"),
+                region: document.getElementById("location-region"),
+                country: document.getElementById("location-country"),
+                latitude: document.getElementById("latitude"),
+                longitude: document.getElementById("longitude")
+            };
+            let searchTimer;
+            let requestController;
+
+            const clearSelection = () => {
+                Object.values(fields).forEach((field) => { field.value = ""; });
+                selectedBox.hidden = true;
+            };
+
+            const chooseLocation = (place) => {
+                fields.name.value = place.name || "";
+                fields.region.value = place.region || "";
+                fields.country.value = place.country || "";
+                fields.latitude.value = place.latitude;
+                fields.longitude.value = place.longitude;
+                selectedLabel.textContent = [place.name, place.region, place.country].filter(Boolean).join(", ");
+                selectedBox.hidden = false;
+                resultsBox.replaceChildren();
+                status.textContent = "Area selected. You can create your report.";
+            };
+
+            const renderResults = (places) => {
+                resultsBox.replaceChildren();
+                places.forEach((place) => {
+                    const option = document.createElement("button");
+                    option.type = "button";
+                    option.className = "location-option";
+                    option.setAttribute("role", "option");
+                    const main = document.createElement("span");
+                    main.className = "location-option-name";
+                    main.textContent = place.name;
+                    const detail = document.createElement("span");
+                    detail.className = "location-option-detail";
+                    detail.textContent = [place.region, place.country].filter(Boolean).join(", ");
+                    option.append(main, detail);
+                    option.addEventListener("click", () => chooseLocation(place));
+                    resultsBox.append(option);
+                });
+            };
+
+            queryInput.addEventListener("input", () => {
+                clearTimeout(searchTimer);
+                clearSelection();
+                resultsBox.replaceChildren();
+                const query = queryInput.value.trim();
+                if (query.length < 2) {
+                    status.textContent = "Type at least two letters to search.";
+                    return;
+                }
+                status.textContent = "Searching areas…";
+                searchTimer = setTimeout(async () => {
+                    if (requestController) requestController.abort();
+                    requestController = new AbortController();
+                    try {
+                        const response = await fetch(`/locations?q=${encodeURIComponent(query)}`, {signal: requestController.signal});
+                        const data = await response.json();
+                        if (!response.ok) throw new Error(data.error || "Location search failed.");
+                        renderResults(data.results || []);
+                        status.textContent = data.results?.length ? "Select a city or area from the list." : "No matching locations found.";
+                    } catch (error) {
+                        if (error.name !== "AbortError") status.textContent = error.message || "Location search failed.";
+                    }
+                }, 250);
+            });
+
+            document.getElementById("change-location").addEventListener("click", () => {
+                clearSelection();
+                queryInput.focus();
+            });
+
+            form.addEventListener("submit", (event) => {
+                if (!fields.name.value || !fields.latitude.value || !fields.longitude.value) {
+                    event.preventDefault();
+                    status.textContent = "Search for and select a city or region before continuing.";
+                    queryInput.focus();
+                }
+            });
+        })();
+    </script>
 </body>
 </html>
