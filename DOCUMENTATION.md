@@ -2,111 +2,74 @@
 
 ## Overview
 
-The application is a Flask weather lookup and journal. It uses external weather data rather than generating random seasonal values. A requested day is classified as historical, within forecast range, or beyond the forecast horizon and routed to an appropriate data source.
+The application is a stateless Flask weather lookup with a browser-local journal. A request is routed to historical reanalysis, an operational forecast, or a climate outlook according to the selected date. The server returns report JSON and does not read or save a shared history or favorites file.
 
 ## Architecture
 
 | File | Responsibility |
 |---|---|
-| `app.py` | Flask routes, request validation, messages, page rendering |
-| `engine.py` | Open-Meteo geocoding and weather retrieval; forecast and climate calculations; response cache |
-| `service.py` | Atomic JSON persistence for reports and favorite areas |
-| `templates/index.html` | Date range and area selection, map preview, comparisons, timelines, and history |
-| `static/style.css` | Responsive interface styling |
+| `app.py` | Flask page, geocoding, and weather JSON endpoints |
+| `engine.py` | Open-Meteo requests, report calculations, and bounded in-memory provider-response cache |
+| `templates/index.html` | EN/HU interface, browser storage, report rendering, import/export |
+| `public/style.css` | Responsive stylesheet served locally by Flask and through Vercel's public asset support |
+| `requirements.txt` | Flask runtime dependency |
 
 ### Routes
 
 | Route | Method | Description |
 |---|---|---|
-| `/` | GET | Dashboard, latest report, and saved history |
-| `/locations?q=...` | GET | Search approximate city/administrative-area matches via Open-Meteo geocoding |
-| `/generate` | POST | Retrieve the appropriate data for the selected date and location, save it, and return to the dashboard |
-| `/favorites` | GET, POST | List saved areas or add the selected area to favorites |
-| `/favorites/<id>` | DELETE | Remove one saved area |
+| `/` | GET | Empty dashboard shell; no server-side report history is loaded |
+| `/style.css` | GET | Stylesheet route for local development; Vercel serves `public/style.css` as a static asset |
+| `/locations?q=...&lang=en\|hu` | GET | Search approximate cities and administrative areas |
+| `/generate` | POST JSON | Retrieve one day or a date range, optionally with a second comparison area; returns reports as JSON and does not persist them |
+
+### Browser-local data
+
+Reports and saved areas are stored in IndexedDB, scoped to the current browser profile and site origin. A localStorage fallback is used if IndexedDB is unavailable. The interface has JSON export/import and a clear-data action. The selected language is stored separately in localStorage.
+
+Browser storage is isolated by browser profile and origin. Clearing site data removes it, so users should export a backup before changing browsers or deleting browser data. Requests to `/generate` include the date and approximate coordinates because the server needs them to request weather data; the server does not turn those requests into a shared journal.
+
+The engine holds up to 128 public provider responses in process memory to reduce duplicate requests. This cache is temporary, may disappear when a serverless instance is recycled, and contains no report history or favorites.
 
 ## Date and data handling
 
 ### Historical dates
 
-For dates before today, the app requests daily data from Open-Meteo's Historical Weather API, using ERA5. Available fields include daily mean/minimum/maximum temperature, apparent temperature, precipitation total, maximum wind speed, and a WMO weather code. The report identifies these as historical weather reanalysis, since reanalysis is reconstructed gridded weather data rather than a station observation. ERA5 archive data can be delayed by several days; if a date in the last five days is not yet in the archive, the app tries the Forecast API's recent past-days data and labels it separately. The supported date range starts in 1940.
+Dates before today use Open-Meteo's Historical Weather API with ERA5. The report identifies the values as historical reanalysis because they are reconstructed gridded data, not station-verified observations. Archive data can be delayed by several days; for recent dates the engine can use the Forecast API's past-days endpoint. Supported dates start in 1940.
 
 ### Near-term dates
 
-Today through 15 days ahead use the Forecast API with a 16-day response. The report uses the daily forecast's temperature range, apparent-temperature range, precipitation probability and total, maximum wind speed, and WMO weather code.
+Today through 15 days ahead use the Forecast API. Reports include daily temperature range, apparent-temperature range, precipitation probability and total, maximum wind speed, and WMO condition code where available.
 
-Each forecast also gets a lead-time guide: higher for days 0–2, moderate for days 3–6, and lower from day 7 onward. These are descriptive guidance labels, not provider-issued probability scores. Forecast mean temperature is compared with a 10-year same-season sample; the report shows the temperature difference, typical range, and historical precipitation likelihood when that comparison data is available.
+The lead-time guide is higher for days 0–2, moderate for days 3–6, and lower from day 7 onward. These are descriptive labels, not provider-issued probability scores. Forecast temperature is also compared with a 10-year sample near the same time of year.
 
 ### Far-future dates
 
-Dates beyond the forecast window use historical ERA5 data from the previous ten complete calendar years. The sample contains observations within ±7 calendar days of the selected month/day. The report presents:
+Dates beyond the forecast window use ERA5 samples from the previous ten complete calendar years, within a ±7-day calendar window around the selected month and day. The report shows median temperature, a 10th–90th percentile band, typical lows/highs, the most common condition, precipitation likelihood, wind, and sample count. It is a climate outlook, not a day-specific forecast.
 
-- Median daily mean temperature.
-- 10th–90th percentile range for daily mean temperature.
-- Median daily low and high temperatures.
-- The most frequent WMO condition code.
-- The share of sampled days with at least 0.1 mm precipitation.
-- Median precipitation and peak wind speed.
+### Date ranges and comparisons
 
-The sample size and calculation window are shown with each report. This is a climate outlook, not a specific forecast for the selected day. A climate outlook is used when an operational forecast is unavailable so the app does not invent extreme values.
+The UI accepts up to 31 consecutive days. The engine batches past, forecast, and climate requests by data source. A same-day comparison requests each selected area's report and returns both in one response. Group identifiers are added by the browser when saving the response locally; they are not stored server-side.
 
-### Date ranges
+## Approximate area handling
 
-Users can request up to 31 consecutive days. Historical dates are fetched as one archive range, near-term dates use one forecast request, and long-range dates use batched historical windows. Each daily report is saved with a range-group identifier. The dashboard renders the saved group as a temperature-range timeline.
+Location search returns city or administrative-area names with representative coordinates. The app does not ask for street addresses. These coordinates are sent to Open-Meteo for weather lookup; the selected approximate point is shown on an OpenStreetMap preview.
 
-### Approximate areas
+## Local run
 
-Users search for a city or administrative area and select a geocoding result. The app stores its representative latitude/longitude, region, and country. It does not ask for an address. The same approximate coordinate is used for both archive and forecast lookups.
-
-The selected place can be saved as a favorite. Saved areas live in `.saved_locations.json`, which is excluded from Git. For a single-day lookup, a second saved area can be selected for side-by-side comparison. An OpenStreetMap preview shows the representative point and an approximate surrounding area.
-
-### Cache and offline fallback
-
-Provider JSON responses are cached in `.weather_cache.json`, excluded from Git. Geocoding results are cached for 30 days, forecasts for 15 minutes, and archive responses for one day. If a live request fails, the engine serves matching cached data and adds a visible note with its approximate age. Cache writes use an atomic replace.
-
-## Stored report shape
-
-`weather_log.json` contains a JSON array. New reports include:
-
-```json
-{
-  "date": "YYYY-MM-DD",
-  "generated_at": "ISO-8601 timestamp",
-  "location": "Place, Region, Country",
-  "latitude": 0.0,
-  "longitude": 0.0,
-  "scenario_type": "historical | forecast | climate_outlook",
-  "source": "Open-Meteo",
-  "source_url": "provider documentation link",
-  "temperature": 0.0,
-  "temperature_min": 0.0,
-  "temperature_max": 0.0,
-  "normal_temperature": 0.0,
-  "temperature_vs_normal": 0.0,
-  "confidence_label": "Higher | Moderate | Lower",
-  "precipitation_probability": 0,
-  "precipitation_sum": 0.0,
-  "wind_speed": 0.0,
-  "condition": "Partly cloudy",
-  "data_basis": "Weather data basis",
-  "data_note": "How this report should be interpreted"
-}
-```
-
-The reader tolerates older simulator records so existing JSON history remains visible. New JSON writes use a temporary file and atomic replace.
-
-Reports created by a date-range request also carry a shared `range_group`; reports created by a same-day area comparison carry a shared `comparison_group`. These identifiers let the dashboard reconstruct the latest timeline or comparison from the report log.
-
-## Run locally
-
-Requires Python 3.10+ and Flask:
+Python 3.10+ is required:
 
 ```bash
-python -m pip install Flask
+python -m pip install -r requirements.txt
 python app.py
 ```
 
-Open <http://127.0.0.1:5000>. A network connection is required for new geocoding and weather data; cached results can be used during outages. The local Flask development server is intended for development, not public deployment. Set `FLASK_SECRET_KEY` to a private value before using the app beyond local development.
+Open <http://127.0.0.1:5000>. New weather and geocoding requests require network access.
+
+## Vercel deployment
+
+The root-level `app.py` exports the Flask instance named `app`. Vercel detects Flask and installs dependencies from `requirements.txt`; static files belong in `public/`. There is no server-side journal storage, so separate visitors do not receive the same report history. Browser-local data does not automatically transfer between origins or browser profiles.
 
 ## Data attribution and terms
 
-The interface credits [Open-Meteo](https://open-meteo.com/) and GeoNames. Open-Meteo weather data is provided under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). Its free API is for non-commercial use; check [Open-Meteo's terms](https://open-meteo.com/en/terms) before commercial deployment.
+The interface credits Open-Meteo, GeoNames, and OpenStreetMap. Weather data is provided under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). Review [Open-Meteo's terms](https://open-meteo.com/en/terms) before commercial deployment.

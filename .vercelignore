@@ -1,0 +1,3 @@
+weather_log.json
+.weather_cache.json*
+.saved_locations.json*
